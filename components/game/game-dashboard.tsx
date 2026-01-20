@@ -9,7 +9,7 @@ import {
   RefreshCw, 
   Sparkles, 
   Zap,
-  History,
+  History as HistoryIcon,
   TrendingUp
 } from "lucide-react"
 import type { Nation, Issue, IssueOption, NationStats } from "@/lib/game-types"
@@ -22,10 +22,7 @@ interface GameDashboardProps {
   onGenerateIssue: () => void
   isLoading?: boolean
   recentChanges?: Partial<NationStats>
-<<<<<<< HEAD
   history?: string[]
-=======
->>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
 }
 
 const primaryStats: (keyof NationStats)[] = ["economy", "civilRights", "politicalFreedom", "environment"]
@@ -53,7 +50,7 @@ export function GameDashboard({
           
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
-              <History className="h-4 w-4" />
+              <HistoryIcon className="h-4 w-4" />
               <span className="hidden sm:inline">History</span>
             </Button>
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
@@ -154,7 +151,6 @@ export function GameDashboard({
             </div>
           )}
         </section>
-<<<<<<< HEAD
 
         {/* History Section */}
         <section>
@@ -167,8 +163,6 @@ export function GameDashboard({
             ))}
           </div>
         </section>
-=======
->>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
       </main>
     </div>
   )
