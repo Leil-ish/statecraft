@@ -22,7 +22,10 @@ interface GameDashboardProps {
   onGenerateIssue: () => void
   isLoading?: boolean
   recentChanges?: Partial<NationStats>
+<<<<<<< HEAD
   history?: string[]
+=======
+>>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
 }
 
 const primaryStats: (keyof NationStats)[] = ["economy", "civilRights", "politicalFreedom", "environment"]
@@ -151,6 +154,7 @@ export function GameDashboard({
             </div>
           )}
         </section>
+<<<<<<< HEAD
 
         {/* History Section */}
         <section>
@@ -163,6 +167,8 @@ export function GameDashboard({
             ))}
           </div>
         </section>
+=======
+>>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
       </main>
     </div>
   )

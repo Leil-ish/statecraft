@@ -1,6 +1,10 @@
 "use client"
 
+<<<<<<< HEAD
 import { useState, useCallback, useEffect } from "react"
+=======
+import { useState, useCallback } from "react"
+>>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
 import type { Nation, Issue, IssueOption, NationStats } from "@/lib/game-types"
 
 // Sample issues for demo - in production these would be AI-generated
@@ -143,6 +147,7 @@ export function useGame() {
   const [isLoading, setIsLoading] = useState(false)
   const [recentChanges, setRecentChanges] = useState<Partial<NationStats>>({})
   const [usedIssueIds, setUsedIssueIds] = useState<Set<string>>(new Set())
+<<<<<<< HEAD
   const [history, setHistory] = useState<string[]>([])
 
   // Load from localStorage on mount
@@ -159,6 +164,8 @@ export function useGame() {
       localStorage.setItem("nation", JSON.stringify(nation))
     }
   }, [nation])
+=======
+>>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
 
   const createNation = useCallback((newNation: Nation) => {
     setIsLoading(true)
@@ -188,7 +195,11 @@ export function useGame() {
         const randomIndex = Math.floor(Math.random() * availableIssues.length)
         const selectedIssue = availableIssues[randomIndex]
         setCurrentIssue(selectedIssue)
+<<<<<<< HEAD
         setUsedIssueIds((prev: Set<string>) => new Set([...prev, selectedIssue.id]))
+=======
+        setUsedIssueIds(prev => new Set([...prev, selectedIssue.id]))
+>>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
       }
       
       setIsLoading(false)
@@ -219,7 +230,10 @@ export function useGame() {
         stats: newStats,
         issuesResolved: nation.issuesResolved + 1
       })
+<<<<<<< HEAD
       setHistory((prevHistory: string[]) => [...prevHistory, `Resolved: ${currentIssue?.title} - Chose: ${option.text}`])
+=======
+>>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
       setRecentChanges(changes)
       setCurrentIssue(null)
       setIsLoading(false)
@@ -231,7 +245,10 @@ export function useGame() {
     currentIssue,
     isLoading,
     recentChanges,
+<<<<<<< HEAD
     history,
+=======
+>>>>>>> aaefdd64765519e046cb7e6491fd8a3c281bd993
     createNation,
     generateIssue,
     selectOption,
