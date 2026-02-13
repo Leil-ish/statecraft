@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata, Viewport } from 'next'
 import { Source_Serif_4, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Providers } from "@/components/providers"
 import './globals.css'
 
 const sourceSerif = Source_Serif_4({ 
@@ -49,7 +50,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${sourceSerif.variable} font-sans antialiased`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
         <Analytics />
       </body>
     </html>

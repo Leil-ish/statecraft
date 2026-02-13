@@ -1,30 +1,32 @@
-# AI NationStates UI
+# Statecraft
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+Statecraft is a political simulator game where you make decisions that shape your nation. This project is built with Next.js, TypeScript, and Tailwind CSS.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/leilas-projects-919c441e/v0-ai-nation-states-ui)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/eBM8DhvcQP3)
+## Getting Started
 
-## Overview
+To get a local copy up and running, follow these simple steps.
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+### Prerequisites
 
-## Deployment
+Make sure you have Node.js and npm installed on your machine.
 
-Your project is live at:
+### Installation
 
-**[https://vercel.com/leilas-projects-919c441e/v0-ai-nation-states-ui](https://vercel.com/leilas-projects-919c441e/v0-ai-nation-states-ui)**
+1.  Clone the repo
+    ```sh
+    git clone https://github.com/Leil-ish/statecraft.git
+    ```
+2.  Install NPM packages
+    ```sh
+    npm install
+    ```
 
-## Build your app
+### Running the Application
 
-Continue building your app on:
+To start the development server, run:
 
-**[https://v0.app/chat/eBM8DhvcQP3](https://v0.app/chat/eBM8DhvcQP3)**
+```sh
+npm run dev
+```
 
-## How It Works
-
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

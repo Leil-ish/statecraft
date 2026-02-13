@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -10,171 +10,132 @@ import {
   TrendingUp, 
   TrendingDown,
   ChevronRight,
-  AlertCircle,
-  Loader2
+  Zap,
+  ShieldCheck,
+  AlertTriangle,
+  Scale
 } from "lucide-react"
 import type { Issue, IssueOption, NationStats } from "@/lib/game-types"
-import { getStatLabel } from "@/lib/game-types"
 
 interface IssueCardProps {
   issue: Issue
   onSelectOption: (option: IssueOption) => void
   isLoading?: boolean
+  era?: string
 }
 
-const categoryColors: Record<string, string> = {
-  "Economy": "bg-stat-economy/20 text-stat-economy border-stat-economy/30",
-  "Civil Rights": "bg-stat-civil-rights/20 text-stat-civil-rights border-stat-civil-rights/30",
-  "Political": "bg-stat-political-freedom/20 text-stat-political-freedom border-stat-political-freedom/30",
-  "Environment": "bg-stat-environment/20 text-stat-environment border-stat-environment/30",
-  "Social": "bg-primary/20 text-primary border-primary/30",
-  "Security": "bg-destructive/20 text-destructive border-destructive/30",
-  "Education": "bg-stat-civil-rights/20 text-stat-civil-rights border-stat-civil-rights/30",
-  "Healthcare": "bg-stat-environment/20 text-stat-environment border-stat-environment/30",
+const categoryIcons: Record<string, any> = {
+  "Economy": Zap,
+  "Civil Rights": ShieldCheck,
+  "Political": Scale,
+  "Environment": Sparkles,
+  "Security": AlertTriangle,
 }
 
-function EffectPreview({ effects }: { effects: Partial<NationStats> }) {
-  const entries = Object.entries(effects).filter(([_, value]) => value !== 0)
-  
-  if (entries.length === 0) return null
+export function IssueCard({ issue, onSelectOption, isLoading = false, era }: IssueCardProps) {
+  const isModern = era === "Information Age" || era === "Cyberpunk Era" || era === "Intergalactic Empire"
+  const [hoveredOption, setHoveredOption] = useState<string | null>(null)
+  const Icon = categoryIcons[issue.category] || Sparkles
   
   return (
-    <div className="flex flex-wrap gap-2 mt-3">
-      {entries.map(([stat, value]) => (
-        <div 
-          key={stat}
-          className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium",
-            (value as number) > 0 
-              ? "bg-primary/10 text-primary" 
-              : "bg-destructive/10 text-destructive"
-          )}
-        >
-          {(value as number) > 0 
-            ? <TrendingUp className="h-3 w-3" /> 
-            : <TrendingDown className="h-3 w-3" />
-          }
-          {getStatLabel(stat as keyof NationStats)}
-          <span className="font-bold">
-            {(value as number) > 0 ? "+" : ""}{value}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-export function IssueCard({ issue, onSelectOption, isLoading = false }: IssueCardProps) {
-  const [selectedOption, setSelectedOption] = useState<string | null>(null)
-  const [showEffects, setShowEffects] = useState(false)
-  
-  const handleSelectOption = (option: IssueOption) => {
-    setSelectedOption(option.id)
-    onSelectOption(option)
-  }
-  
-  const categoryColor = categoryColors[issue.category] ?? "bg-secondary text-secondary-foreground border-border"
-  
-  return (
-    <Card className="overflow-hidden border-border bg-card">
-      <CardHeader className="pb-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge 
-                variant="outline" 
-                className={cn("text-xs border", categoryColor)}
-              >
-                {issue.category}
-              </Badge>
-              <Badge variant="secondary" className="text-xs gap-1 font-normal">
-                <Sparkles className="h-3 w-3" />
-                Generated
+    <div className="relative group">
+      {/* Glow Effect */}
+      <div className="absolute -inset-0.5 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-[32px] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
+      
+      <div className={cn(
+        "relative flex flex-col rounded-[32px] border backdrop-blur-2xl overflow-hidden shadow-2xl transition-all duration-500",
+        isModern 
+          ? "bg-white/10 border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.05)]" 
+          : "bg-white/5 border-white/10 shadow-none"
+      )}>
+        {/* Top Accent Bar */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+        
+        <div className="p-8 space-y-8">
+          {/* Header */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                  <Icon className="h-5 w-5 text-blue-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">National Priority</span>
+                  <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">{issue.category}</span>
+                </div>
+              </div>
+              <Badge variant="outline" className="rounded-full border-white/10 text-white/40 text-[10px] font-bold tracking-widest px-3 py-1">
+                DECREE #{issue.id.slice(0, 4).toUpperCase()}
               </Badge>
             </div>
-            <CardTitle className="text-lg font-medium text-foreground text-balance font-serif">
+            
+            <h2 className="text-2xl font-bold text-white tracking-tight leading-tight">
               {issue.title}
-            </CardTitle>
+            </h2>
+            
+            <p className="text-white/60 leading-relaxed text-sm font-medium">
+              {issue.description}
+            </p>
+          </div>
+
+          {/* Options List */}
+          <div className="space-y-3">
+            {issue.options.map((option, index) => (
+              <motion.button
+                key={option.id}
+                onMouseEnter={() => setHoveredOption(option.id)}
+                onMouseLeave={() => setHoveredOption(null)}
+                onClick={() => !isLoading && onSelectOption(option)}
+                disabled={isLoading}
+                className={cn(
+                  "w-full p-5 rounded-2xl text-left transition-all relative group/btn overflow-hidden",
+                  "bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20",
+                  isLoading && "opacity-50 cursor-not-allowed"
+                )}
+                whileHover={{ x: 8 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {/* Background Glow on Hover */}
+                <AnimatePresence>
+                  {hoveredOption === option.id && (
+                    <motion.div
+                      layoutId="optionGlow"
+                      className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    />
+                  )}
+                </AnimatePresence>
+
+                <div className="relative flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-white/40 border border-white/10">
+                      {String.fromCharCode(65 + index)}
+                    </div>
+                    <span className="text-sm font-bold text-white group-hover/btn:text-blue-400 transition-colors">
+                      {option.text}
+                    </span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-white/20 group-hover/btn:text-blue-400 transition-colors" />
+                </div>
+              </motion.button>
+            ))}
           </div>
         </div>
-        <CardDescription className="text-muted-foreground mt-2 text-pretty leading-relaxed">
-          {issue.description}
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent className="pt-0">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Policy Options</h4>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setShowEffects(!showEffects)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            {showEffects ? "Hide" : "Show"} effects preview
-          </Button>
-        </div>
-        
-        <div className="space-y-3">
-          {issue.options.map((option, index) => (
-            <button
-              key={option.id}
-              onClick={() => handleSelectOption(option)}
-              disabled={isLoading}
-              className={cn(
-                "w-full text-left p-4 rounded-lg border transition-all duration-200",
-                "hover:border-primary/50 hover:bg-primary/5",
-                "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background",
-                selectedOption === option.id 
-                  ? "border-primary bg-primary/10" 
-                  : "border-border bg-secondary/30",
-                isLoading && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <div className={cn(
-                  "flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-xs font-medium",
-                  selectedOption === option.id 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-muted text-muted-foreground"
-                )}>
-                  {String.fromCharCode(65 + index)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground leading-relaxed">
-                    {option.text}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1 italic">
-                    — {option.supporter}
-                  </p>
-                  {showEffects && <EffectPreview effects={option.effects} />}
-                </div>
-                <ChevronRight className={cn(
-                  "h-5 w-5 flex-shrink-0 transition-transform",
-                  selectedOption === option.id 
-                    ? "text-primary translate-x-1" 
-                    : "text-muted-foreground"
-                )} />
-              </div>
-            </button>
-          ))}
-        </div>
-        
-        {isLoading && (
-          <div className="flex items-center justify-center gap-2 mt-4 py-3 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Processing your decision...</span>
+
+        {/* Footer info */}
+        <div className="px-8 py-4 bg-white/5 border-t border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Awaiting Executive Decision</span>
           </div>
-        )}
-        
-        <div className="flex items-start gap-2 mt-4 p-3 rounded-lg bg-muted/50">
-          <AlertCircle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-muted-foreground">
-            Your decisions will shape the future of your nation. Consider the long-term 
-            consequences carefully before making your choice.
-          </p>
+          <div className="flex items-center gap-1">
+             <Sparkles className="h-3 w-3 text-purple-400" />
+             <span className="text-[10px] font-bold text-purple-400/60 uppercase tracking-widest">AI Intelligence</span>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

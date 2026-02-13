@@ -9,10 +9,25 @@ export interface NationStats {
   crime: number
   education: number
   healthcare: number
+  technology: number // Progress towards next era
 }
+
+export type GameEra = 
+  | "Stone Age" 
+  | "Bronze Age" 
+  | "Iron Age" 
+  | "Classical Era" 
+  | "Medieval Era" 
+  | "Renaissance" 
+  | "Industrial Revolution" 
+  | "Atomic Age" 
+  | "Information Age" 
+  | "Cyberpunk Era"
+  | "Intergalactic Empire"
 
 export interface Nation {
   id: string
+  slot: number
   name: string
   motto: string
   flag: string
@@ -21,8 +36,11 @@ export interface Nation {
   capital: string
   leader: string
   stats: NationStats
+  era: GameEra
+  gameMode: "Eternal" | "Chronological"
   founded: Date
   issuesResolved: number
+  historyLog: string[]
 }
 
 export interface IssueOption {
@@ -69,7 +87,26 @@ export const FLAG_COLORS = [
   { name: "Ocean Teal", primary: "#0D9488", secondary: "#F97316" },
 ] as const
 
-export function getStatLabel(stat: keyof NationStats): string {
+export function getStatLabel(stat: keyof NationStats, era?: GameEra): string {
+  if (era === "Stone Age") {
+    if (stat === "economy") return "Calories"
+    if (stat === "environment") return "Warmth"
+    if (stat === "education") return "Ancestral Wisdom"
+    if (stat === "healthcare") return "Herbalism"
+  }
+  
+  if (era === "Industrial Revolution" || era === "Atomic Age") {
+    if (stat === "economy") return "Industrial Output"
+    if (stat === "environment") return "Ecological Impact"
+  }
+
+  if (era === "Cyberpunk Era" || era === "Intergalactic Empire") {
+    if (stat === "economy") return "Compute Power"
+    if (stat === "environment") return "Neural Stability"
+    if (stat === "education") return "Data Uplink"
+    if (stat === "healthcare") return "Biomodification"
+  }
+
   const labels: Record<keyof NationStats, string> = {
     economy: "Economy",
     civilRights: "Civil Rights",
@@ -81,6 +118,7 @@ export function getStatLabel(stat: keyof NationStats): string {
     crime: "Crime Rate",
     education: "Education",
     healthcare: "Healthcare",
+    technology: "Technology",
   }
   return labels[stat]
 }
@@ -91,6 +129,10 @@ export function getStatDescription(stat: keyof NationStats, value: number): stri
   }
   if (stat === "gdp") {
     return `$${value.toLocaleString()}`
+  }
+  
+  if (stat === "technology") {
+    return `${value}/100 to next Era`
   }
   
   const descriptions: Record<string, string[]> = {
@@ -115,9 +157,10 @@ export function formatPopulation(pop: number): string {
   return pop.toString()
 }
 
-export function createDefaultNation(name: string, governmentType: string): Nation {
+export function createDefaultNation(name: string, governmentType: string, gameMode: "Eternal" | "Chronological" = "Eternal", slot: number = 1): Nation {
   return {
     id: crypto.randomUUID(),
+    slot,
     name,
     motto: "Unity, Progress, Prosperity",
     flag: "🏳️",
@@ -125,6 +168,8 @@ export function createDefaultNation(name: string, governmentType: string): Natio
     currency: "Credit",
     capital: `${name} City`,
     leader: "The People",
+    era: gameMode === "Chronological" ? "Stone Age" : "Information Age",
+    gameMode,
     stats: {
       economy: 50,
       civilRights: 50,
@@ -136,8 +181,10 @@ export function createDefaultNation(name: string, governmentType: string): Natio
       crime: 50,
       education: 50,
       healthcare: 50,
+      technology: 0,
     },
     founded: new Date(),
     issuesResolved: 0,
+    historyLog: [],
   }
 }

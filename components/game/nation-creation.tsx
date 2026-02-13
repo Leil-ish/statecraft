@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { 
   Globe, 
@@ -12,7 +14,8 @@ import {
   Sparkles, 
   ChevronRight,
   ArrowLeft,
-  Loader2
+  Loader2,
+  History as HistoryIcon
 } from "lucide-react"
 import { GOVERNMENT_TYPES, type Nation, createDefaultNation } from "@/lib/game-types"
 
@@ -29,9 +32,10 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
   const [governmentType, setGovernmentType] = useState<string>("")
   const [selectedFlag, setSelectedFlag] = useState("🦅")
   const [motto, setMotto] = useState("")
+  const [gameMode, setGameMode] = useState<"Eternal" | "Chronological">("Eternal")
   
   const handleNext = () => {
-    if (step < 3) {
+    if (step < 4) {
       setStep(step + 1)
     }
   }
@@ -43,7 +47,7 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
   }
   
   const handleCreate = () => {
-    const nation = createDefaultNation(nationName, governmentType)
+    const nation = createDefaultNation(nationName, governmentType, gameMode)
     nation.flag = selectedFlag
     if (motto) nation.motto = motto
     onCreateNation(nation)
@@ -56,211 +60,271 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
   }
   
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl border-border bg-card overflow-hidden">
-        {/* Header */}
-        <CardHeader className="text-center pb-6 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-          <div className="relative">
-            <div className="mx-auto w-14 h-14 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
-              <Globe className="h-6 w-6 text-primary" />
+    <div className="min-h-screen bg-black flex items-center justify-center p-6 selection:bg-blue-500/30">
+      {/* Sophisticated Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-600/5 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-600/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] brightness-100 contrast-150" />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="w-full max-w-2xl relative"
+      >
+        <Card className="border-white/5 bg-white/[0.02] backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] overflow-hidden rounded-[40px] border-t-white/10">
+          {/* Header */}
+          <CardHeader className="text-center pb-10 relative pt-12">
+            <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent" />
+            <div className="relative space-y-6">
+              <div className="mx-auto w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-2 shadow-2xl relative group">
+                <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-3xl group-hover:bg-blue-500/30 transition-colors" />
+                <Globe className="h-10 w-10 text-blue-400 relative z-10" />
+              </div>
+              <div>
+                <CardTitle className="text-4xl md:text-5xl text-white font-black tracking-tighter uppercase leading-none">
+                  Establish Legacy
+                </CardTitle>
+                <CardDescription className="mt-4 text-white/20 font-black uppercase tracking-[0.3em] text-[10px]">
+                  Sequence Phase 0{step} / 04 — {step === 1 ? "Initialization" : step === 2 ? "Governance" : step === 3 ? "Timeline" : "Symbolics"}
+                </CardDescription>
+              </div>
+              
+              {/* Progress indicator */}
+              <div className="flex items-center justify-center gap-4 mt-8">
+                {[1, 2, 3, 4].map((s) => (
+                  <div 
+                    key={s}
+                    className={cn(
+                      "h-1 rounded-full transition-all duration-700",
+                      s === step 
+                        ? "w-12 bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]" 
+                        : s < step 
+                          ? "w-4 bg-blue-500/40" 
+                          : "w-4 bg-white/5"
+                    )}
+                  />
+                ))}
+              </div>
             </div>
-            <CardTitle className="text-2xl md:text-3xl text-foreground font-serif tracking-tight">
-              Establish Your Nation
-            </CardTitle>
-            <CardDescription className="mt-2 text-muted-foreground">
-              Begin your journey in governance and policy-making
-            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="pb-10 px-8 md:px-12">
+            {/* Step 1: Nation Name */}
+            {step === 1 && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="space-y-3">
+                  <Label htmlFor="nationName" className="text-xs font-bold uppercase tracking-widest text-white/40 ml-1">Nation Name</Label>
+                  <Input 
+                    id="nationName"
+                    placeholder="e.g. United Republic of Atlas"
+                    value={nationName}
+                    onChange={(e) => setNationName(e.target.value)}
+                    className="text-xl h-16 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-2xl focus:ring-blue-500/40 focus:border-blue-500/40 transition-all px-6 font-bold"
+                    autoFocus
+                  />
+                  <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest ml-1">
+                    Enter the formal name of your sovereign state
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="motto" className="text-xs font-bold uppercase tracking-widest text-white/40 ml-1">National Motto</Label>
+                  <Input 
+                    id="motto"
+                    placeholder="Unity through Strength..."
+                    value={motto}
+                    onChange={(e) => setMotto(e.target.value)}
+                    className="h-14 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-2xl focus:ring-blue-500/40 focus:border-blue-500/40 transition-all px-6 font-medium italic"
+                  />
+                </div>
+              </div>
+            )}
             
-            {/* Progress indicator */}
-            <div className="flex items-center justify-center gap-2 mt-6">
-              {[1, 2, 3].map((s) => (
-                <div 
-                  key={s}
-                  className={cn(
-                    "h-2 rounded-full transition-all duration-300",
-                    s === step 
-                      ? "w-8 bg-primary" 
-                      : s < step 
-                        ? "w-2 bg-primary/50" 
-                        : "w-2 bg-muted"
-                  )}
-                />
-              ))}
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="pb-8">
-          {/* Step 1: Nation Name */}
-          {step === 1 && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-medium text-foreground font-serif mb-1">
-                  Identity
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Define your nation&apos;s name and founding principles
-                </p>
+            {/* Step 2: Government Type */}
+            {step === 2 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {GOVERNMENT_TYPES.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setGovernmentType(type)}
+                      className={cn(
+                        "p-6 rounded-[1.5rem] border text-left transition-all duration-300 group relative overflow-hidden",
+                        governmentType === type 
+                          ? "border-blue-500 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.2)]" 
+                          : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+                      )}
+                    >
+                      {governmentType === type && (
+                        <motion.div 
+                          layoutId="active-gov"
+                          className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent"
+                        />
+                      )}
+                      <div className="relative flex items-center justify-between">
+                        <span className={cn(
+                          "text-sm font-bold tracking-tight transition-colors",
+                          governmentType === type ? "text-blue-400" : "text-white/60 group-hover:text-white"
+                        )}>
+                          {type}
+                        </span>
+                        {governmentType === type && <Sparkles className="h-4 w-4 text-blue-400" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="nationName">Nation Name</Label>
-                <Input 
-                  id="nationName"
-                  placeholder="The Republic of..."
-                  value={nationName}
-                  onChange={(e) => setNationName(e.target.value)}
-                  className="text-lg h-12 bg-input border-border"
-                  autoFocus
-                />
-                <p className="text-xs text-muted-foreground">
-                  Minimum 3 characters required
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="motto">National Motto (optional)</Label>
-                <Input 
-                  id="motto"
-                  placeholder="Unity, Progress, Prosperity..."
-                  value={motto}
-                  onChange={(e) => setMotto(e.target.value)}
-                  className="bg-input border-border"
-                />
-              </div>
-            </div>
-          )}
-          
-          {/* Step 2: Government Type */}
-          {step === 2 && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-medium text-foreground font-serif mb-1">
-                  Governance Structure
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Select your nation&apos;s political framework
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {GOVERNMENT_TYPES.map((type) => (
+            )}
+            
+            {/* Step 3: Game Mode */}
+            {step === 3 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 gap-4">
                   <button
-                    key={type}
-                    onClick={() => setGovernmentType(type)}
+                    onClick={() => setGameMode("Eternal")}
                     className={cn(
-                      "p-4 rounded-lg border text-left transition-all duration-200",
-                      "hover:border-primary/50 hover:bg-primary/5",
-                      "focus:outline-none focus:ring-2 focus:ring-primary/50",
-                      governmentType === type 
-                        ? "border-primary bg-primary/10" 
-                        : "border-border bg-secondary/30"
+                      "flex items-start gap-6 p-6 rounded-[2rem] border text-left transition-all duration-300 group",
+                      gameMode === "Eternal"
+                        ? "bg-blue-500/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.1)]"
+                        : "bg-white/5 border-white/10 hover:border-white/20"
                     )}
                   >
-                    <span className="text-sm font-medium text-foreground">{type}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Step 3: Flag & Finalize */}
-          {step === 3 && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-medium text-foreground font-serif mb-1">
-                  National Symbol
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Choose an emblem to represent your nation
-                </p>
-              </div>
-              
-              <div className="flex flex-wrap justify-center gap-2">
-                {flagEmojis.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => setSelectedFlag(emoji)}
-                    className={cn(
-                      "w-12 h-12 rounded-lg text-xl transition-all duration-150",
-                      "hover:bg-primary/10 focus:outline-none focus:ring-1 focus:ring-primary/40",
-                      selectedFlag === emoji 
-                        ? "bg-primary/15 border border-primary/50" 
-                        : "bg-secondary/30 border border-border"
-                    )}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-              
-              {/* Preview */}
-              <div className="mt-8 p-5 rounded-lg bg-secondary/20 border border-border">
-                <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-4">
-                  Preview
-                </h4>
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-lg bg-primary/10 border border-border flex items-center justify-center">
-                    <span className="text-2xl">{selectedFlag}</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-foreground font-serif">{nationName}</h3>
-                    <p className="text-sm text-muted-foreground">{governmentType}</p>
-                    {motto && (
-                      <p className="text-xs text-muted-foreground italic mt-1">
-                        &ldquo;{motto}&rdquo;
+                    <div className={cn(
+                      "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all",
+                      gameMode === "Eternal" ? "bg-blue-600 text-white shadow-lg" : "bg-white/5 text-white/20"
+                    )}>
+                      <Sparkles className="h-7 w-7" />
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className={cn(
+                        "text-xl font-black tracking-tight transition-colors",
+                        gameMode === "Eternal" ? "text-white" : "text-white/40"
+                      )}>Eternal Empire</h4>
+                      <p className="text-sm text-white/40 font-medium leading-relaxed">
+                        Start in the modern era with advanced technology. Focus on pure policy and global dominance.
                       </p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setGameMode("Chronological")}
+                    className={cn(
+                      "flex items-start gap-6 p-6 rounded-[2rem] border text-left transition-all duration-300 group",
+                      gameMode === "Chronological"
+                        ? "bg-amber-500/10 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]"
+                        : "bg-white/5 border-white/10 hover:border-white/20"
                     )}
+                  >
+                    <div className={cn(
+                      "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all",
+                      gameMode === "Chronological" ? "bg-amber-500 text-white shadow-lg" : "bg-white/5 text-white/20"
+                    )}>
+                      <HistoryIcon className="h-7 w-7" />
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className={cn(
+                        "text-xl font-black tracking-tight transition-colors",
+                        gameMode === "Chronological" ? "text-white" : "text-white/40"
+                      )}>Chronological</h4>
+                      <p className="text-sm text-white/40 font-medium leading-relaxed">
+                        Start in the Stone Age and guide your people through history. Unlock new eras through tech.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Step 4: Flag & Finalize */}
+            {step === 4 && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex flex-wrap justify-center gap-3">
+                  {flagEmojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => setSelectedFlag(emoji)}
+                      className={cn(
+                        "w-14 h-14 rounded-2xl text-2xl transition-all duration-300 flex items-center justify-center",
+                        selectedFlag === emoji 
+                          ? "bg-blue-600 border border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.4)] scale-110" 
+                          : "bg-white/5 border border-white/10 hover:bg-white/10 hover:scale-105"
+                      )}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Preview Card */}
+                <div className="relative p-8 rounded-[2rem] bg-gradient-to-br from-blue-600/20 to-purple-600/10 border border-white/10 overflow-hidden shadow-inner">
+                  <div className="absolute top-0 right-0 p-4">
+                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px] font-black tracking-[0.2em] px-3">READY FOR DEPLOYMENT</Badge>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="w-20 h-20 rounded-[1.5rem] bg-white/10 border border-white/20 flex items-center justify-center shadow-2xl backdrop-blur-md">
+                      <span className="text-4xl">{selectedFlag}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-3xl font-black text-white tracking-tighter leading-none">{nationName || "Unnamed Nation"}</h3>
+                      <p className="text-sm font-bold text-blue-400 uppercase tracking-widest">{governmentType || "Undefined Government"}</p>
+                      {motto && (
+                        <p className="text-sm text-white/40 font-medium italic mt-2">
+                          &ldquo;{motto}&rdquo;
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {/* Navigation Buttons */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
-            <Button 
-              variant="ghost" 
-              onClick={handleBack}
-              disabled={step === 1}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            
-            {step < 3 ? (
-              <Button 
-                onClick={handleNext}
-                disabled={!canProceed()}
-                className="gap-2"
-              >
-                Continue
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleCreate}
-                disabled={isLoading || !canProceed()}
-                className="gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Establishing...
-                  </>
-                ) : (
-                  <>
-                    <Flag className="h-4 w-4" />
-                    Establish Nation
-                  </>
-                )}
-              </Button>
             )}
-          </div>
-        </CardContent>
-      </Card>
+            
+            {/* Navigation Buttons */}
+            <div className="flex items-center justify-between mt-12 pt-8 border-t border-white/5">
+              <Button 
+                variant="ghost" 
+                onClick={handleBack}
+                disabled={step === 1 || isLoading}
+                className="h-12 px-6 rounded-full text-white/40 hover:text-white hover:bg-white/5 font-bold transition-all"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              
+              {step < 4 ? (
+                <Button 
+                  onClick={handleNext}
+                  disabled={!canProceed()}
+                  className="h-12 px-8 rounded-full bg-white text-black hover:bg-white/90 font-bold transition-all hover:scale-105 active:scale-95 shadow-xl shadow-white/10"
+                >
+                  Continue
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleCreate}
+                  disabled={isLoading || !canProceed()}
+                  className="h-12 px-10 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/20"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Initializing...
+                    </>
+                  ) : (
+                    <>
+                      <Flag className="mr-2 h-4 w-4" />
+                      Begin Your Reign
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   )
 }
