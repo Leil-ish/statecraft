@@ -15,19 +15,28 @@ export default {
     }
 
     try {
-      const body = await request.json() as {
-        nationName: string,
-        governmentType: string,
-        era: string,
-        motto: string,
-        leader: string,
-        stats: any,
-        history: string[],
-        historyLog?: string[],
-        forbidden?: string[],
-        timestamp?: number
-      };
-      const { nationName, governmentType, era, motto, leader, stats, history, historyLog, forbidden, timestamp } = body;
+      const rawBody = await request.json() as any;
+      const mode = rawBody.mode || "generate"; // "generate" or "interpret"
+
+      // Handle both flat and nested nation structure
+      const nationName = rawBody.nationName || rawBody.nation?.name || "The Nation";
+      const governmentType = rawBody.governmentType || rawBody.nation?.governmentType || "Republic";
+      const era = rawBody.era || "Information Age";
+      const motto = rawBody.motto || rawBody.nation?.motto || "In Progress We Trust";
+      const leader = rawBody.leader || rawBody.nation?.leader || "The Leader";
+      const stats = rawBody.stats || {};
+      const historyLog = rawBody.historyLog || rawBody.history || [];
+      const forbidden = rawBody.forbidden || [];
+      const institutions = rawBody.institutions || {};
+      const factions = rawBody.factions || {};
+      const activePolicies = rawBody.activePolicies || [];
+      const complexity = rawBody.complexity || "medium";
+      const desiredOptionCount = Math.max(3, Math.min(5, Number(rawBody.desiredOptionCount) || 4));
+      const isEarlyEra = ["Stone Age", "Bronze Age", "Iron Age", "Classical Era", "Medieval Era", "Renaissance"].includes(era);
+
+      // For interpretation mode
+      const crisisContext = rawBody.crisisContext || "";
+      const userResponse = rawBody.userResponse || "";
 
       // Define Era-specific personalities and linguistic styles
       const eraPersonalities: Record<string, { role: string, style: string, conflict: string, keywords: string }> = {
@@ -86,115 +95,121 @@ export default {
           keywords: "Connectivity, Silicon, Privacy, Algorithm"
         },
         "Cyberpunk Era": {
-          role: "The Neural Core",
-          style: "Gritty, synthetic, neon-drenched. Use words like 'Synthesis', 'Compute', 'Organic', 'Uplink'.",
-          conflict: "Biological vs. Synthetic",
-          keywords: "Chrome, The Grid, Corp-Rats, Neural-Link"
+          role: "The High Registrar",
+          style: "Precise, sophisticated, focusing on total integration. Use words like 'Registry', 'Integration', 'Optimization', 'Administrative Layer'.",
+          conflict: "Sovereignty vs. Efficiency",
+          keywords: "Central Registry, System Optimization, Social Integration, Resource Allocation"
         },
         "Intergalactic Empire": {
-          role: "The Neural Core",
-          style: "Majestic, cold, cosmic. Use words like 'Synthesis', 'Compute', 'Organic', 'Uplink'.",
-          conflict: "Biological vs. Synthetic",
-          keywords: "Star-Systems, Light-Years, The Great Expanse, Dyson Swarm"
+          role: "The Grand Overseer",
+          style: "Timeless, vast, focusing on the preservation of the state across light-years. Use words like 'Continuity', 'Stellar Reach', 'Historical Mandate', 'The Registry'.",
+          conflict: "Expansion vs. Cohesion",
+          keywords: "Star-Systems, Epoch, Civilizational Continuity, Grand Mandate"
         }
       };
 
       const personality = eraPersonalities[era] || eraPersonalities["Information Age"];
 
-      const systemPrompt = `You are ${personality.role} for the nation of ${nationName}, a ${governmentType} in the ${era} led by ${leader}.
-      National Motto: "${motto}"
+      let systemPrompt = "";
+      let userPrompt = "";
 
-      CORE CONFLICT:
-      ${personality.conflict}
+      if (mode === "interpret") {
+        systemPrompt = `You are the AI game master for Statecraft.
+Role: ${personality.role} in a ${governmentType} (${era}).
+Task: Interpret a ruler's custom response to a crisis.
+Crisis: ${crisisContext}
+Ruler's Response: "${userResponse}"
 
-      LINGUISTIC STYLE & KEYWORDS:
-      ${personality.style}
-      Keywords: ${personality.keywords}
+Analyze the response and determine its impact on the nation's stats.
+Be realistic but dramatic. If the response is nonsensical, apply minor negative effects to happiness/politicalFreedom.
 
-      STAT TERMINOLOGY FOR THIS ERA:
-      - Economy is referred to as: ${era === "Stone Age" ? "Calories" : era === "Industrial Revolution" ? "Industrial Output" : (era === "Cyberpunk Era" || era === "Intergalactic Empire") ? "Compute Power" : "Economy"}
-      - Environment is referred to as: ${era === "Stone Age" ? "Warmth" : era === "Industrial Revolution" ? "Ecological Impact" : (era === "Cyberpunk Era" || era === "Intergalactic Empire") ? "Neural Stability" : "Environment"}
-      - Education is referred to as: ${era === "Stone Age" ? "Ancestral Wisdom" : (era === "Cyberpunk Era" || era === "Intergalactic Empire") ? "Data Uplink" : "Education"}
-      - Healthcare is referred to as: ${era === "Stone Age" ? "Herbalism" : (era === "Cyberpunk Era" || era === "Intergalactic Empire") ? "Biomodification" : "Healthcare"}
+Output ONLY JSON in this format:
+{
+  "text": "A brief summary of your action's immediate result (1 sentence).",
+  "effects": { "economy": 5, "happiness": -5, ... },
+  "consequence": {
+    "text": "A potential long-term consequence of this choice (1 sentence).",
+    "chance": 0.3,
+    "type": "benefit",
+    "statEffects": { "happiness": 10 }
+  }
+}`;
+        userPrompt = `Interpret this command: "${userResponse}" for the crisis: ${crisisContext}`;
+      } else {
+        const themeWords = ["Betrayal", "Abundance", "Fear", "Curiosity", "Sacrifice", "Discovery", "Inequality", "Utopia", "Legacy", "Subversion", "Purity", "Decay", "Crisis", "Ambition"];
+        const randomTheme = themeWords[Math.floor(Math.random() * themeWords.length)];
 
-      HISTORICAL CONTEXT (Procedural Lore):
-      ${historyLog && historyLog.length > 0 ? `Our nation's history is defined by these choices:
-      ${historyLog.join('\n      ')}
-      Reference these past decisions in your advisor's opening sentence to provide continuity (e.g., "Just as we chose to [past choice] in the [past era], we must now...").` : "We are a young nation with no recorded history yet."}
+        systemPrompt = `You are the AI game master for Statecraft.
+Role: ${personality.role} in a ${governmentType} (${era}).
+Context: ${nationName} led by ${leader}. Motto: "${motto}".
+History: ${historyLog && historyLog.length > 0 ? historyLog.slice(-3).join(" | ") : "None"}.
+Institutions: ${JSON.stringify(institutions)}.
+Factions: ${JSON.stringify(factions)}.
+Recent Policies: ${activePolicies.length > 0 ? activePolicies.slice(-3).map((p: any) => p.title).join(" | ") : "None"}.
+Forbidden: ${forbidden && forbidden.length > 0 ? forbidden.slice(-20).join(", ") : "None"}.
+Theme: ${randomTheme}.
 
-      Current National Stats:
-      - Economy: ${stats.economy}
-      - Technology: ${stats.technology}/100 (Progress to next era)
-      - Civil Rights: ${stats.civilRights}
-      - Political Freedom: ${stats.politicalFreedom}
-      - Environment: ${stats.environment}
-      - Happiness: ${stats.happiness}
-      - Education: ${stats.education}
-      - Healthcare: ${stats.healthcare}
-      - Crime: ${stats.crime}
+Output ONLY JSON in this format (ensure "options" is an array with exactly ${desiredOptionCount} items):
+{
+  "title": "Short Title",
+  "category": "Economy",
+  "description": "2 sentences. Reference history.",
+  "options": [
+    { "text": "Option 1", "effects": { "economy": 5, "happiness": -5 } },
+    { "text": "Option 2", "effects": { "economy": -5, "happiness": 5 } },
+    { "text": "Option 3", "effects": { "economy": 2, "happiness": 1 } }
+  ]
+}
 
-      FORBIDDEN TITLES (NEVER USE THESE):
-      ${forbidden && forbidden.length > 0 ? forbidden.join(", ") : "None"}
+Balance rules:
+- Keep each stat effect between -25 and 25.
+- Use 2 to 4 affected stats per option.
+- population/gdp effects represent percentage change and should usually stay between -8 and 8.
+- Make tradeoffs asymmetric but plausible; avoid strictly mirrored options.
+- In Eras mode logic, include at least one option with a positive "technology" effect of 8 or more.`;
+        if (isEarlyEra) {
+          systemPrompt += `
+- Early-era authenticity rule: avoid modern or futuristic concepts (e.g., AI, internet, algorithm, robotics, nuclear, satellites, digital media, genetics).`;
+        }
+        userPrompt = `Generate a ${complexity}-complexity crisis about ${randomTheme}. Return exactly ${desiredOptionCount} options.`;
+      }
 
-      RECENT THEMES:
-      ${history && history.length > 0 ? history.slice(-5).join(", ") : "None"}
+      const models = [
+        "@cf/meta/llama-3.1-8b-instruct",
+        "@cf/meta/llama-3-8b-instruct",
+        "@cf/mistral/mistral-7b-instruct-v0.1",
+        "@cf/google/gemma-7b-it-v1.1"
+      ];
 
-      TASK:
-      Generate a NEW, UNIQUE political crisis tailored to the ${era} and your persona as a ${personality.role}.
+      let response;
+      let lastError;
 
-      CRITICAL INSTRUCTIONS:
-      1. PERSONA: Speak and think as a ${personality.role}. Your description should reflect your ${personality.style}.
-      2. ERA APPROPRIATENESS: The dilemma MUST be grounded in the ${era}. Use the ERA FOCUS keywords.
-      3. GOVERNMENT ALIGNMENT: The crisis should reflect a ${governmentType}.
-      4. STAT-BASED CONSEQUENCES: High stats or low stats should influence the crisis.
-      5. TECHNOLOGY IMPACT: Options should allow the player to gain "technology" points to progress to the next era.
-      6. TITLE MUST BE UNIQUE.
-      7. ROTATE CATEGORIES.
-      8. FORMAT: Return ONLY a JSON object.
+      for (const model of models) {
+        try {
+          console.log(`Attempting generation with model: ${model} in mode: ${mode}`);
+          response = await env.AI.run(model, {
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 1024,
+            repetition_penalty: 1.1,
+            top_p: 0.9
+          });
 
-      JSON STRUCTURE:
-      {
-        "title": "Dramatic Title",
-        "category": "Economy" | "Civil Rights" | "Environment" | "Security" | "Healthcare" | "Education" | "Technology",
-        "description": "2-3 sentences on the crisis, referencing the ${era} and written in the style of a ${personality.role}.",
-        "options": [
-          {
-            "text": "Option 1",
-            "impact": {
-              "economy": number,
-              "technology": number,
-              "civilRights": number,
-              "politicalFreedom": number,
-              "environment": number,
-              "happiness": number,
-              "education": number,
-              "healthcare": number,
-              "crime": number
-            }
-          },
-          {
-            "text": "Option 2",
-            "impact": {
-              "economy": number,
-              "technology": number,
-              "civilRights": number,
-              "politicalFreedom": number,
-              "environment": number,
-              "happiness": number,
-              "education": number,
-              "healthcare": number,
-              "crime": number
-            }
-          }
-        ]
-      }`;
+          if (response) break;
+        } catch (e) {
+          console.error(`Model ${model} failed:`, e);
+          lastError = e;
+          continue;
+        }
+      }
 
-      const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "Generate the next national decree. Return ONLY JSON." }
-        ]
-      });
+      if (!response) {
+        const errorMessage = lastError instanceof Error ? lastError.message : "Unknown error";
+        throw new Error(`All AI models failed. Last error: ${errorMessage}`);
+      }
 
       // Handle the different response formats Cloudflare might return
       let resultString = "";
@@ -206,8 +221,24 @@ export default {
         resultString = JSON.stringify(response);
       }
 
-      // Clean up the string in case the AI added markdown backticks
-      const cleanedResult = resultString.replace(/```json\n?|```/g, "").trim();
+      if (!resultString || resultString.trim().length === 0) {
+        throw new Error("AI returned an empty response.");
+      }
+
+      // Robust JSON extraction: look for the first '{' and last '}'
+      let cleanedResult = resultString;
+      const firstBrace = resultString.indexOf('{');
+      const lastBrace = resultString.lastIndexOf('}');
+
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        cleanedResult = resultString.substring(firstBrace, lastBrace + 1);
+      } else if (firstBrace !== -1) {
+        // Handle case where it starts but doesn't end (truncation)
+        cleanedResult = resultString.substring(firstBrace);
+      } else {
+        // Fallback to original cleaning if braces not found correctly
+        cleanedResult = resultString.replace(/```json\n?|```/g, "").trim();
+      }
 
       try {
         const parsed = JSON.parse(cleanedResult);
@@ -218,7 +249,10 @@ export default {
         console.error("Failed to parse AI response:", cleanedResult);
         return new Response(JSON.stringify({
           error: "Invalid AI Output",
-          details: cleanedResult.substring(0, 100)
+          message: "The AI generated a response that isn't valid JSON.",
+          details: cleanedResult.length > 200
+            ? `${cleanedResult.substring(0, 100)}...${cleanedResult.substring(cleanedResult.length - 100)}`
+            : cleanedResult
         }), {
           status: 500,
           headers: corsHeaders
@@ -226,9 +260,12 @@ export default {
       }
 
     } catch (e: any) {
+      console.error("Worker Error:", e);
       return new Response(JSON.stringify({
         error: "The Bureaucracy stalled.",
-        message: e.message
+        message: e.message,
+        stack: e.stack,
+        type: e.name
       }), {
         status: 500,
         headers: corsHeaders

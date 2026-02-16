@@ -20,6 +20,13 @@ import {
 import type { NationStats } from "@/lib/game-types"
 import { getStatDescription } from "@/lib/game-types"
 
+function getProgressValue(statKey: keyof NationStats, value: number): number {
+  if (statKey === "technology") return Math.max(0, Math.min(100, value))
+  if (statKey === "population") return Math.max(0, Math.min(100, (Math.log10(Math.max(value, 1)) / 9) * 100))
+  if (statKey === "gdp") return Math.max(0, Math.min(100, (value / 100000) * 100))
+  return Math.max(0, Math.min(100, value))
+}
+
 const statConfig: Record<keyof NationStats, { 
   icon: React.ElementType
   color: string
@@ -104,12 +111,13 @@ interface StatCardProps {
 }
 
 export function StatCard({ statKey, value, label, change, compact = false, era }: StatCardProps) {
-  const isModern = era === "Information Age" || era === "Cyberpunk Era" || era === "Intergalactic Empire"
+  const isAdvanced = era === "Information Age" || era === "Cyberpunk Era" || era === "Intergalactic Empire"
   const config = statConfig[statKey]
   const Icon = config.icon
   const description = getStatDescription(statKey, value)
   const isPercentStat = !["population", "gdp", "technology"].includes(statKey)
   const isTechnology = statKey === "technology"
+  const progressValue = getProgressValue(statKey, value)
   
   if (compact) {
     return (
@@ -117,7 +125,7 @@ export function StatCard({ statKey, value, label, change, compact = false, era }
         layout
         className={cn(
           "flex items-center gap-3 p-3 rounded-xl backdrop-blur-md border transition-all duration-500 group",
-          isModern 
+          isAdvanced 
             ? "bg-white/10 border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.05)]" 
             : "bg-white/5 border-white/10"
         )}
@@ -173,7 +181,7 @@ export function StatCard({ statKey, value, label, change, compact = false, era }
       whileHover={{ y: -4 }}
       className={cn(
         "relative overflow-hidden p-6 rounded-3xl backdrop-blur-xl border shadow-2xl group transition-all duration-500",
-        isModern 
+        isAdvanced 
           ? "bg-white/10 border-white/20 shadow-[0_0_20px_rgba(255,255,255,0.05)]" 
           : "bg-white/5 border-white/10 shadow-none"
       )}
@@ -254,7 +262,7 @@ export function StatCard({ statKey, value, label, change, compact = false, era }
           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
             <motion.div 
               initial={{ width: 0 }}
-              animate={{ width: isTechnology ? `${value}%` : `${value}%` }}
+              animate={{ width: `${progressValue}%` }}
               transition={{ duration: 1, ease: "easeOut" }}
               className={cn("h-full rounded-full shadow-[0_0_10px_rgba(255,255,255,0.3)]", 
                 isTechnology ? "bg-amber-400" : (value > 70 ? "bg-emerald-400" : value > 40 ? "bg-blue-400" : "bg-red-400")

@@ -12,6 +12,49 @@ export interface NationStats {
   technology: number // Progress towards next era
 }
 
+export type InstitutionKey =
+  | "governance"
+  | "economy"
+  | "welfare"
+  | "security"
+  | "knowledge"
+
+export type FactionKey =
+  | "citizens"
+  | "elites"
+  | "innovators"
+  | "traditionalists"
+  | "securityCouncil"
+
+export interface PolicyCard {
+  id: string
+  title: string
+  era: GameEra
+  category: string
+  summary: string
+  enactedAt: string
+  effects: Partial<NationStats>
+}
+
+export type RegionTerrain = "plains" | "highlands" | "coastal" | "riverland" | "industrial" | "frontier"
+export type RegionSpecialization = "agrarian" | "industrial" | "trade" | "fortress" | "scholarly"
+
+export interface RegionPoint {
+  x: number
+  y: number
+}
+
+export interface Region {
+  id: string
+  name: string
+  terrain: RegionTerrain
+  specialization?: RegionSpecialization
+  shape?: RegionPoint[]
+  development: number // 0-100
+  stability: number // 0-100
+  populationShare: number // 0-100
+}
+
 export type GameEra = 
   | "Stone Age" 
   | "Bronze Age" 
@@ -37,10 +80,23 @@ export interface Nation {
   leader: string
   stats: NationStats
   era: GameEra
-  gameMode: "Eternal" | "Chronological"
+  gameMode: "Eternal" | "Eras"
   founded: Date
   issuesResolved: number
+  decisionHistory?: string[]
   historyLog: string[]
+  regions?: Region[]
+  usedIssueTitles?: string[]
+  borders?: string[] // SVG paths for the map
+  institutions?: Record<InstitutionKey, number>
+  factions?: Record<FactionKey, number>
+  activePolicies?: PolicyCard[]
+  crisisArcs?: MapCrisis[]
+  pendingConsequences?: {
+    issueTitle: string
+    optionText: string
+    consequence: NonNullable<IssueOption["consequence"]>
+  }[]
 }
 
 export interface IssueOption {
@@ -48,6 +104,12 @@ export interface IssueOption {
   text: string
   supporter: string
   effects: Partial<NationStats>
+  consequence?: {
+    text: string
+    chance: number // 0-1
+    type: "benefit" | "downside"
+    statEffects: Partial<NationStats>
+  }
 }
 
 export interface Issue {
@@ -56,6 +118,44 @@ export interface Issue {
   description: string
   category: string
   options: IssueOption[]
+  isMapEvent?: boolean
+  metadata?: {
+    source?: "map" | "faction" | "institution" | "policy" | "ai"
+    crisisType?: MapCrisisType
+    severity?: MapCrisisSeverity
+    crisisId?: string
+    regionId?: string
+    regionName?: string
+    stage?: number
+    projectType?: "regional-specialization"
+  }
+}
+
+export type MapCrisisType =
+  | "unrest"
+  | "corruption"
+  | "infrastructure"
+  | "health"
+  | "security"
+  | "innovation"
+
+export type MapCrisisSeverity = "low" | "medium" | "high"
+
+export interface MapCrisis {
+  id: string
+  x: number
+  y: number
+  regionId?: string
+  regionName?: string
+  regionTerrain?: RegionTerrain
+  type: MapCrisisType
+  severity: MapCrisisSeverity
+  label: string
+  source: "faction" | "institution" | "policy"
+  reason: string
+  stage?: number
+  maxStage?: number
+  tick?: number
 }
 
 export interface GameState {
@@ -101,10 +201,10 @@ export function getStatLabel(stat: keyof NationStats, era?: GameEra): string {
   }
 
   if (era === "Cyberpunk Era" || era === "Intergalactic Empire") {
-    if (stat === "economy") return "Compute Power"
-    if (stat === "environment") return "Neural Stability"
-    if (stat === "education") return "Data Uplink"
-    if (stat === "healthcare") return "Biomodification"
+    if (stat === "economy") return "Administrative Integration"
+    if (stat === "environment") return "Social Cohesion"
+    if (stat === "education") return "Universal Knowledge Access"
+    if (stat === "healthcare") return "Human Capital Optimization"
   }
 
   const labels: Record<keyof NationStats, string> = {
@@ -157,7 +257,7 @@ export function formatPopulation(pop: number): string {
   return pop.toString()
 }
 
-export function createDefaultNation(name: string, governmentType: string, gameMode: "Eternal" | "Chronological" = "Eternal", slot: number = 1): Nation {
+export function createDefaultNation(name: string, governmentType: string, gameMode: "Eternal" | "Eras" = "Eternal", slot: number = 1): Nation {
   return {
     id: crypto.randomUUID(),
     slot,
@@ -168,7 +268,7 @@ export function createDefaultNation(name: string, governmentType: string, gameMo
     currency: "Credit",
     capital: `${name} City`,
     leader: "The People",
-    era: gameMode === "Chronological" ? "Stone Age" : "Information Age",
+    era: gameMode === "Eras" ? "Stone Age" : "Information Age",
     gameMode,
     stats: {
       economy: 50,
@@ -185,6 +285,31 @@ export function createDefaultNation(name: string, governmentType: string, gameMo
     },
     founded: new Date(),
     issuesResolved: 0,
+    decisionHistory: [],
     historyLog: [],
+    regions: [
+      { id: "r-heartland", name: "Heartland Basin", terrain: "plains", development: 52, stability: 56, populationShare: 32 },
+      { id: "r-coast", name: "Coastal Reach", terrain: "coastal", development: 49, stability: 52, populationShare: 24 },
+      { id: "r-highlands", name: "Northern Highlands", terrain: "highlands", development: 42, stability: 50, populationShare: 18 },
+      { id: "r-frontier", name: "Frontier March", terrain: "frontier", development: 38, stability: 45, populationShare: 26 },
+    ],
+    usedIssueTitles: [],
+    institutions: {
+      governance: 50,
+      economy: 50,
+      welfare: 50,
+      security: 50,
+      knowledge: 50,
+    },
+    factions: {
+      citizens: 50,
+      elites: 50,
+      innovators: 50,
+      traditionalists: 50,
+      securityCouncil: 50,
+    },
+    activePolicies: [],
+    crisisArcs: [],
+    pendingConsequences: [],
   }
 }

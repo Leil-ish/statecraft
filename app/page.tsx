@@ -18,10 +18,15 @@ export default function Home() {
     isLoading, 
     recentChanges,
     history,
+    mapCrises,
     createNation, 
     generateIssue, 
     selectOption,
     resetGame,
+    handleMapCrisis,
+    handleCustomResponse,
+    isCrisisModalOpen,
+    setIsCrisisModalOpen,
     slots,
     activeSlot,
     selectSlot,
@@ -62,8 +67,8 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 space-y-12">
         <div className="text-center space-y-4">
-          <h1 className="text-5xl font-bold tracking-tighter text-white">Select Save Slot</h1>
-          <p className="text-white/40 max-w-md mx-auto">Access your neural archives or initialize a new sequence.</p>
+          <h1 className="text-5xl font-bold tracking-tighter text-white uppercase">National Registry</h1>
+          <p className="text-white/40 max-w-md mx-auto font-medium">Access your administrative archives or initialize a new sequence of governance.</p>
         </div>
         <SlotSelector 
           slots={slots} 
@@ -74,9 +79,9 @@ export default function Home() {
         <Button 
           variant="ghost" 
           onClick={() => setView("landing")}
-          className="text-white/20 hover:text-white"
+          className="text-white/20 hover:text-white font-bold uppercase tracking-widest text-[10px]"
         >
-          Return to Neural Link
+          Return to Main Menu
         </Button>
       </div>
     )
@@ -108,8 +113,13 @@ export default function Home() {
         isLoading={isLoading}
         recentChanges={recentChanges}
         decisionHistory={history}
+        mapCrises={mapCrises}
         onNewEmpire={handleNewEmpire}
         onResetProgress={handleResetProgress}
+        onMapCrisis={handleMapCrisis}
+        onCustomResponse={handleCustomResponse}
+        isCrisisModalOpen={isCrisisModalOpen}
+        setIsCrisisModalOpen={setIsCrisisModalOpen}
       />
     )
   }

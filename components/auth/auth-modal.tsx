@@ -20,11 +20,23 @@ export function AuthModal() {
     setIsLoading(true)
 
     if (isLogin) {
-      await signIn("credentials", {
-        email,
-        password,
-        callbackUrl: "/",
-      })
+      try {
+        const result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        })
+        
+        if (result?.error) {
+          console.error("Login failed:", result.error)
+          // Handle error (e.g., show a toast)
+        } else {
+          // Success! The page will re-render because the session changes
+          window.location.reload() 
+        }
+      } catch (error) {
+        console.error("An unexpected error occurred during sign in:", error)
+      }
     } else {
       // Register logic would go to a separate API route
       const res = await fetch("/api/auth/register", {

@@ -71,26 +71,28 @@ export function NationHeader({ nation }: NationHeaderProps) {
           </div>
           
           {/* Main Info */}
-          <div className="flex-1 min-w-0 space-y-4">
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-                  {nation.name}
+          <div className="flex-1 min-w-0 space-y-6">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <h1 className="text-4xl md:text-6xl font-black tracking-[-0.06em] leading-[0.85] uppercase">
+                  <span className="bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">
+                    {nation.name}
+                  </span>
                 </h1>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="rounded-full border-blue-500/30 bg-blue-500/10 text-blue-400 px-4 py-1 text-[10px] font-bold tracking-widest uppercase">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.03] text-white/40 px-4 py-1 text-[9px] font-black tracking-[0.3em] uppercase backdrop-blur-3xl">
                     {nation.governmentType}
                   </Badge>
-                  {nation.gameMode === "Chronological" && (
-                    <Badge className={cn("rounded-full border-none px-4 py-1 text-[10px] font-bold tracking-widest uppercase flex items-center gap-1.5", currentEra.bgColor, currentEra.color)}>
+                  {nation.gameMode === "Eras" && (
+                    <Badge className={cn("rounded-full border-none px-4 py-1 text-[9px] font-black tracking-[0.3em] uppercase flex items-center gap-2 backdrop-blur-3xl", currentEra.bgColor, currentEra.color)}>
                       <EraIcon className="h-3 w-3" />
                       {nation.era}
                     </Badge>
                   )}
                 </div>
               </div>
-              <p className="text-lg text-white/40 italic font-medium">
-                &ldquo;{nation.motto}&rdquo;
+              <p className="text-sm md:text-base text-white/20 font-medium tracking-widest uppercase pl-1">
+                {nation.motto || "The Path of Inevitability"}
               </p>
             </div>
             
@@ -149,7 +151,7 @@ export function NationHeader({ nation }: NationHeaderProps) {
               </span>
             </div>
             
-            {nation.gameMode === "Chronological" ? (
+            {nation.gameMode === "Eras" ? (
               <div className="flex flex-col lg:items-end w-full max-w-[160px]">
                 <div className="flex items-center gap-2 mb-2 justify-between w-full">
                   <div className="flex items-center gap-2">

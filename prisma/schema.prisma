@@ -65,6 +65,14 @@ model Nation {
   currentIssue    String?  // JSON string
   decisionHistory String   // JSON string
   historyLog      String   @default("[]") // JSON string
+  usedIssueTitles String   @default("[]") // JSON string
+  borders         String   @default("[]") // JSON string
+  pendingConsequences String @default("[]") // JSON string
+  institutions    String   @default("{}") // JSON string
+  factions        String   @default("{}") // JSON string
+  activePolicies  String   @default("[]") // JSON string
+  regions         String   @default("[]") // JSON string
+  crisisArcs      String   @default("[]") // JSON string
   issuesResolved  Int      @default(0)
   founded         DateTime @default(now())
   createdAt       DateTime @default(now())

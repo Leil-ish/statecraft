@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,15 +24,24 @@ interface NationCreationProps {
   isLoading?: boolean
 }
 
-const flagEmojis = ["🦅", "🦁", "🐉", "🌟", "🔥", "⚔️", "🌊", "🏔️", "🌲", "🎭", "👑", "🛡️"]
+const flagEmojis = [
+  "🦅", "🦁", "🐉", "🦬", "🐺", "🐻", "🐍", "🦊",
+  "🌞", "🌙", "⭐", "☄️", "🔥", "⚡", "🌊", "🌿",
+  "🏔️", "🌋", "🏛️", "🗿", "⚔️", "🛡️", "🏹", "🪓",
+  "👑", "🧭", "🔱", "⚒️", "🎭", "🕊️", "🦉", "🦄",
+]
 
 export function NationCreation({ onCreateNation, isLoading = false }: NationCreationProps) {
   const [step, setStep] = useState(1)
   const [nationName, setNationName] = useState("")
   const [governmentType, setGovernmentType] = useState<string>("")
   const [selectedFlag, setSelectedFlag] = useState("🦅")
+  const [customFlag, setCustomFlag] = useState("")
   const [motto, setMotto] = useState("")
-  const [gameMode, setGameMode] = useState<"Eternal" | "Chronological">("Eternal")
+  const [capitalName, setCapitalName] = useState("")
+  const [leaderName, setLeaderName] = useState("")
+  const [gameMode, setGameMode] = useState<"Eternal" | "Eras">("Eternal")
+  const effectiveFlag = customFlag.trim() || selectedFlag
   
   const handleNext = () => {
     if (step < 4) {
@@ -48,8 +57,10 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
   
   const handleCreate = () => {
     const nation = createDefaultNation(nationName, governmentType, gameMode)
-    nation.flag = selectedFlag
+    nation.flag = effectiveFlag
     if (motto) nation.motto = motto
+    if (capitalName.trim()) nation.capital = capitalName.trim()
+    if (leaderName.trim()) nation.leader = leaderName.trim()
     onCreateNation(nation)
   }
   
@@ -74,44 +85,42 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="w-full max-w-2xl relative"
       >
-        <Card className="border-white/5 bg-white/[0.02] backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] overflow-hidden rounded-[40px] border-t-white/10">
+        <Card className="border-white/5 bg-white/[0.02] backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] overflow-hidden rounded-[32px] sm:rounded-[40px] border-t-white/10">
           {/* Header */}
-          <CardHeader className="text-center pb-10 relative pt-12">
+          <CardHeader className="text-center pb-6 sm:pb-10 relative pt-8 sm:pt-12">
             <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent" />
-            <div className="relative space-y-6">
-              <div className="mx-auto w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-2 shadow-2xl relative group">
-                <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-3xl group-hover:bg-blue-500/30 transition-colors" />
-                <Globe className="h-10 w-10 text-blue-400 relative z-10" />
+            <div className="relative space-y-4 sm:space-y-6">
+              <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-1 sm:mb-2 shadow-2xl relative group">
+                <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-2xl sm:rounded-3xl group-hover:bg-blue-500/30 transition-colors" />
+                <Globe className="h-8 w-8 sm:h-10 sm:w-10 text-blue-400 relative z-10" />
               </div>
               <div>
-                <CardTitle className="text-4xl md:text-5xl text-white font-black tracking-tighter uppercase leading-none">
-                  Establish Legacy
+                <CardTitle className="text-3xl sm:text-4xl md:text-5xl font-black tracking-[-0.05em] leading-[0.9] uppercase">
+                  <span className="bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">Establish</span>
+                  <br />
+                  <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">Legacy</span>
                 </CardTitle>
-                <CardDescription className="mt-4 text-white/20 font-black uppercase tracking-[0.3em] text-[10px]">
-                  Sequence Phase 0{step} / 04 — {step === 1 ? "Initialization" : step === 2 ? "Governance" : step === 3 ? "Timeline" : "Symbolics"}
+                <CardDescription className="mt-4 sm:mt-6 text-white/20 font-bold uppercase tracking-[0.4em] text-[8px] sm:text-[9px]">
+                  Registry Protocol 0{step}.0
                 </CardDescription>
               </div>
               
               {/* Progress indicator */}
-              <div className="flex items-center justify-center gap-4 mt-8">
+              <div className="flex items-center justify-center gap-3 sm:gap-4 mt-6 sm:mt-8">
                 {[1, 2, 3, 4].map((s) => (
                   <div 
                     key={s}
                     className={cn(
-                      "h-1 rounded-full transition-all duration-700",
-                      s === step 
-                        ? "w-12 bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]" 
-                        : s < step 
-                          ? "w-4 bg-blue-500/40" 
-                          : "w-4 bg-white/5"
+                      "h-0.5 sm:h-1 transition-all duration-500 rounded-full",
+                      s <= step ? "w-6 sm:w-8 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "w-1.5 sm:w-2 bg-white/5"
                     )}
                   />
                 ))}
               </div>
             </div>
           </CardHeader>
-          
-          <CardContent className="pb-10 px-8 md:px-12">
+
+          <CardContent className="px-6 sm:px-12 pb-8 sm:pb-12">
             {/* Step 1: Nation Name */}
             {step === 1 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -137,7 +146,7 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
                     placeholder="Unity through Strength..."
                     value={motto}
                     onChange={(e) => setMotto(e.target.value)}
-                    className="h-14 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-2xl focus:ring-blue-500/40 focus:border-blue-500/40 transition-all px-6 font-medium italic"
+                    className="h-14 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-2xl focus:ring-blue-500/40 focus:border-blue-500/40 transition-all px-6 font-medium"
                   />
                 </div>
               </div>
@@ -210,25 +219,25 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
                   </button>
 
                   <button
-                    onClick={() => setGameMode("Chronological")}
+                    onClick={() => setGameMode("Eras")}
                     className={cn(
                       "flex items-start gap-6 p-6 rounded-[2rem] border text-left transition-all duration-300 group",
-                      gameMode === "Chronological"
+                      gameMode === "Eras"
                         ? "bg-amber-500/10 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]"
                         : "bg-white/5 border-white/10 hover:border-white/20"
                     )}
                   >
                     <div className={cn(
                       "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all",
-                      gameMode === "Chronological" ? "bg-amber-500 text-white shadow-lg" : "bg-white/5 text-white/20"
+                      gameMode === "Eras" ? "bg-amber-500 text-white shadow-lg" : "bg-white/5 text-white/20"
                     )}>
                       <HistoryIcon className="h-7 w-7" />
                     </div>
                     <div className="space-y-2">
                       <h4 className={cn(
                         "text-xl font-black tracking-tight transition-colors",
-                        gameMode === "Chronological" ? "text-white" : "text-white/40"
-                      )}>Chronological</h4>
+                        gameMode === "Eras" ? "text-white" : "text-white/40"
+                      )}>Eras</h4>
                       <p className="text-sm text-white/40 font-medium leading-relaxed">
                         Start in the Stone Age and guide your people through history. Unlock new eras through tech.
                       </p>
@@ -241,6 +250,43 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
             {/* Step 4: Flag & Finalize */}
             {step === 4 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <Label htmlFor="capitalName" className="text-xs font-bold uppercase tracking-widest text-white/40 ml-1">Capital City</Label>
+                    <Input
+                      id="capitalName"
+                      placeholder={`${nationName || "Nation"} City`}
+                      value={capitalName}
+                      onChange={(e) => setCapitalName(e.target.value)}
+                      className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-2xl focus:ring-blue-500/40 focus:border-blue-500/40 transition-all px-4 font-medium"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="leaderName" className="text-xs font-bold uppercase tracking-widest text-white/40 ml-1">Leader Title</Label>
+                    <Input
+                      id="leaderName"
+                      placeholder="The People"
+                      value={leaderName}
+                      onChange={(e) => setLeaderName(e.target.value)}
+                      className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-2xl focus:ring-blue-500/40 focus:border-blue-500/40 transition-all px-4 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="customFlag" className="text-xs font-bold uppercase tracking-widest text-white/40 ml-1">Custom Icon (Optional)</Label>
+                  <Input
+                    id="customFlag"
+                    placeholder="Use any emoji or symbol"
+                    value={customFlag}
+                    onChange={(e) => setCustomFlag(Array.from(e.target.value).slice(0, 2).join(""))}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-2xl focus:ring-blue-500/40 focus:border-blue-500/40 transition-all px-4 font-medium"
+                  />
+                  <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest ml-1">
+                    If filled, this overrides the preset icon palette.
+                  </p>
+                </div>
+
                 <div className="flex flex-wrap justify-center gap-3">
                   {flagEmojis.map((emoji) => (
                     <button
@@ -261,17 +307,23 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
                 {/* Preview Card */}
                 <div className="relative p-8 rounded-[2rem] bg-gradient-to-br from-blue-600/20 to-purple-600/10 border border-white/10 overflow-hidden shadow-inner">
                   <div className="absolute top-0 right-0 p-4">
-                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px] font-black tracking-[0.2em] px-3">READY FOR DEPLOYMENT</Badge>
+                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px] font-black tracking-[0.2em] px-3">READY FOR RATIFICATION</Badge>
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="w-20 h-20 rounded-[1.5rem] bg-white/10 border border-white/20 flex items-center justify-center shadow-2xl backdrop-blur-md">
-                      <span className="text-4xl">{selectedFlag}</span>
+                      <span className="text-4xl">{effectiveFlag}</span>
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-3xl font-black text-white tracking-tighter leading-none">{nationName || "Unnamed Nation"}</h3>
                       <p className="text-sm font-bold text-blue-400 uppercase tracking-widest">{governmentType || "Undefined Government"}</p>
+                      <p className="text-xs text-white/35 font-semibold uppercase tracking-[0.15em]">
+                        Capital: {capitalName.trim() || `${nationName || "Nation"} City`}
+                      </p>
+                      <p className="text-xs text-white/35 font-semibold uppercase tracking-[0.15em]">
+                        Leader: {leaderName.trim() || "The People"}
+                      </p>
                       {motto && (
-                        <p className="text-sm text-white/40 font-medium italic mt-2">
+                        <p className="text-sm text-white/40 font-medium mt-2">
                           &ldquo;{motto}&rdquo;
                         </p>
                       )}
@@ -311,12 +363,12 @@ export function NationCreation({ onCreateNation, isLoading = false }: NationCrea
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Initializing...
+                      Ratifying...
                     </>
                   ) : (
                     <>
                       <Flag className="mr-2 h-4 w-4" />
-                      Begin Your Reign
+                      Commence Mandate
                     </>
                   )}
                 </Button>
