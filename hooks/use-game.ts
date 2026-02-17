@@ -540,6 +540,40 @@ export function useGame() {
     }
   }, [nation, activeSlot])
 
+  const handleMapCrisis = useCallback((crisis: any) => {
+    if (!nation) return
+
+    const fallbackIssue: Issue = {
+      id: `map-${crisis?.id || Date.now()}`,
+      title: `${crisis?.label || "Regional Crisis"}`,
+      description: crisis?.reason || "A regional crisis demands immediate leadership action.",
+      category: "Security",
+      options: [
+        {
+          id: `map-opt-a-${Date.now()}`,
+          text: "Deploy emergency response teams and stabilize key routes.",
+          supporter: "Security Council",
+          effects: { crime: -8, economy: -3, happiness: -1 },
+        },
+        {
+          id: `map-opt-b-${Date.now()}`,
+          text: "Open negotiations with local leaders and fund rapid relief.",
+          supporter: "Civic Delegation",
+          effects: { happiness: 4, economy: -5, politicalFreedom: 2 },
+        },
+        {
+          id: `map-opt-c-${Date.now()}`,
+          text: "Hold reserves and gather intelligence before committing fully.",
+          supporter: "Strategic Office",
+          effects: { economy: 1, crime: 2, education: 1 },
+        },
+      ],
+    }
+
+    setCurrentIssue(ensureEraAdvancementOption(applyEraFlavorToIssue(fallbackIssue, nation.era), nation))
+    setIsCrisisModalOpen(true)
+  }, [nation])
+
 
 
   // Load from database or localStorage on mount
