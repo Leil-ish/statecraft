@@ -6,9 +6,12 @@ import bcrypt from "bcryptjs"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const prisma = hasDatabaseUrl ? getPrisma() : null
+const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: prisma ? PrismaAdapter(prisma) : undefined,
+  secret: authSecret,
+  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
