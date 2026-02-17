@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
+
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -9,6 +12,7 @@ export async function POST(req: Request) {
   }
 
   try {
+    const prisma = getPrisma()
     const body = await req.json();
     const { nation } = body as { nation: any };
     const slot = Math.max(1, Math.min(3, Number(nation.slot) || 1));
@@ -93,6 +97,7 @@ export async function DELETE(req: Request) {
   }
 
   try {
+    const prisma = getPrisma()
     const { searchParams } = new URL(req.url);
     const slot = searchParams.get("slot");
 
@@ -129,6 +134,7 @@ export async function GET() {
   }
 
   try {
+    const prisma = getPrisma()
     const nations = await prisma.nation.findMany({
       where: { userId: session.user.id },
       orderBy: { slot: "asc" },
