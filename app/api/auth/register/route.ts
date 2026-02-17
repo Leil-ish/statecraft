@@ -35,6 +35,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ user: { email: user.email, name: user.name } })
   } catch (error) {
-    return NextResponse.json({ error: "Registration failed" }, { status: 500 })
+    console.error("Register route failed:", error)
+    return NextResponse.json(
+      {
+        error: "Registration failed",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
   }
 }
