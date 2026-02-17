@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import type {
   Nation,
@@ -33,6 +33,15 @@ const ERAS: GameEra[] = [
   "Cyberpunk Era",
   "Intergalactic Empire"
 ]
+
+const PRE_INDUSTRIAL_ERAS = new Set<GameEra>([
+  "Stone Age",
+  "Bronze Age",
+  "Iron Age",
+  "Classical Era",
+  "Medieval Era",
+  "Renaissance",
+])
 
 const BOUNDED_STATS: (keyof NationStats)[] = [
   "economy",
@@ -86,6 +95,10 @@ const DEFAULT_REGION_SHAPES: Record<string, RegionPoint[]> = {
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value))
+}
+
+function isPreIndustrialEra(era?: GameEra): boolean {
+  return !!era && PRE_INDUSTRIAL_ERAS.has(era)
 }
 
 function applyStatDelta(stat: keyof NationStats, current: number, delta: number): number {
@@ -349,6 +362,22 @@ function crisisTypeFromFaction(key: FactionKey): MapCrisisType {
   return "innovation"
 }
 
+function factionLabel(key: FactionKey): string {
+  if (key === "citizens") return "citizen blocs"
+  if (key === "elites") return "elite networks"
+  if (key === "innovators") return "innovator circles"
+  if (key === "traditionalists") return "traditionalist coalitions"
+  return "the security council"
+}
+
+function institutionLabel(key: InstitutionKey): string {
+  if (key === "governance") return "governance administration"
+  if (key === "economy") return "economic administration"
+  if (key === "welfare") return "welfare services"
+  if (key === "security") return "security services"
+  return "knowledge institutions"
+}
+
 function buildPressureCrisisCandidates(nation: Nation): MapCrisis[] {
   const crises: MapCrisis[] = []
   const factions = normalizeFactions(nation.factions)
@@ -398,8 +427,8 @@ function buildPressureCrisisCandidates(nation: Nation): MapCrisis[] {
         pressure * 2,
         "faction",
         crisisTypeFromFaction(key),
-        `${key} pressure`,
-        `${key} alignment moved to ${value}, creating political volatility.`
+        `${factionLabel(key)} pressure`,
+        `${factionLabel(key)} shifted to ${value}, driving new political volatility in the region.`
       )
     })
 
@@ -412,8 +441,8 @@ function buildPressureCrisisCandidates(nation: Nation): MapCrisis[] {
         pressure,
         "institution",
         crisisTypeFromInstitution(key),
-        `${key} strain`,
-        `${key} capacity is at ${value}, opening systemic vulnerabilities.`
+        `${institutionLabel(key)} strain`,
+        `${institutionLabel(key)} capacity has slipped to ${value}, opening systemic vulnerabilities.`
       )
     })
 
@@ -688,7 +717,7 @@ const CRISIS_TEMPLATES: Record<
   },
   innovation: {
     title: "Strategic Technology Schism",
-    description: "A major technological transition is splitting regulators, industry, and labor over who captures the upside.",
+    description: "A major technological shift is dividing regulators, producers, and workers over who should control the gains.",
     category: "Technology",
     options: [
       {
@@ -746,6 +775,104 @@ function specializeCrisisEffects(
   return out
 }
 
+function buildCrisisSupplementalOptions(
+  crisis: MapCrisis,
+  era?: GameEra,
+  terrain?: RegionTerrain
+): Array<Omit<IssueOption, "id">> {
+  const preIndustrial = isPreIndustrialEra(era)
+  const terrainTag =
+    terrain === "coastal"
+      ? "coastal lanes"
+      : terrain === "highlands"
+        ? "mountain routes"
+        : terrain === "frontier"
+          ? "frontier tracks"
+          : "regional roads"
+
+  if (crisis.type === "infrastructure") {
+    return preIndustrial
+      ? [
+          { text: `Levy coordinated labor to repair ${terrainTag} before trade season.`, supporter: "Works Steward", effects: { economy: 6, happiness: -2, technology: 3 } },
+          { text: "Empower local stewards to reroute caravans and ration stores until routes stabilize.", supporter: "Provincial Council", effects: { economy: 3, crime: -2, healthcare: 2 } },
+          { text: "Prioritize strategic chokepoints first and accept temporary outages elsewhere.", supporter: "Quartermaster Corps", effects: { economy: 4, happiness: -3, crime: -1 } },
+        ]
+      : [
+          { text: "Deploy redundant transport corridors and harden weak nodes immediately.", supporter: "Infrastructure Command", effects: { economy: 6, technology: 4, gdp: -2 } },
+          { text: "Publish outage maps and open citizen reporting to target repairs faster.", supporter: "Civic Operations Office", effects: { happiness: 4, politicalFreedom: 3, economy: 2 } },
+          { text: "Sequence repairs by criticality and keep nonessential systems on reduced service.", supporter: "National Logistics Board", effects: { economy: 4, crime: -2, happiness: -2 } },
+        ]
+  }
+
+  if (crisis.type === "unrest") {
+    return preIndustrial
+      ? [
+          { text: "Summon regional elders for binding grievance hearings and restitution.", supporter: "Elders Assembly", effects: { happiness: 6, politicalFreedom: 4, economy: -2 } },
+          { text: "Post trusted wardens at flashpoints while keeping markets open.", supporter: "Town Wardens", effects: { crime: -5, economy: 2, politicalFreedom: -3 } },
+          { text: "Grant temporary local charters to defuse anger while reforms are drafted.", supporter: "Charter Chancellery", effects: { politicalFreedom: 6, happiness: 4, economy: -3 } },
+        ]
+      : [
+          { text: "Launch a public grievance process with hard deadlines and visible concessions.", supporter: "Civic Response Office", effects: { happiness: 7, politicalFreedom: 5, economy: -3 } },
+          { text: "Secure transport hubs and permit controlled demonstrations under clear rules.", supporter: "Public Safety Directorate", effects: { crime: -6, happiness: -1, politicalFreedom: -2 } },
+          { text: "Offer region-specific autonomy packages tied to stability benchmarks.", supporter: "Federal Negotiation Desk", effects: { politicalFreedom: 6, economy: 2, crime: -2 } },
+        ]
+  }
+
+  if (crisis.type === "corruption") {
+    return preIndustrial
+      ? [
+          { text: "Rotate tax stewards and publish levy records in every district square.", supporter: "Treasury Scribes", effects: { economy: 5, politicalFreedom: 3, crime: -4 } },
+          { text: "Confiscate proven illicit holdings and fund public granaries with the proceeds.", supporter: "Royal Auditors", effects: { happiness: 5, economy: 4, civilRights: -2 } },
+          { text: "Grant amnesty for voluntary disclosures, then prosecute repeat offenders.", supporter: "High Court", effects: { crime: -3, politicalFreedom: 2, economy: 2 } },
+        ]
+      : [
+          { text: "Mandate real-time procurement transparency and independent bid review.", supporter: "Anti-Corruption Commission", effects: { crime: -5, economy: 5, politicalFreedom: 3 } },
+          { text: "Freeze suspect contracts and reroute delivery to vetted emergency vendors.", supporter: "Procurement Control Unit", effects: { economy: 3, crime: -4, happiness: -1 } },
+          { text: "Strike a monitored settlement with implicated firms and strict compliance terms.", supporter: "State Attorney's Office", effects: { economy: 4, crime: -3, civilRights: -2 } },
+        ]
+  }
+
+  if (crisis.type === "health") {
+    return preIndustrial
+      ? [
+          { text: "Dispatch healer caravans and mobile infirmaries to high-risk settlements.", supporter: "Healers Guild", effects: { healthcare: 7, happiness: 3, economy: -3 } },
+          { text: "Establish strict quarantine zones at market gates and river crossings.", supporter: "Public Wardens", effects: { healthcare: 4, crime: -3, economy: -3 } },
+          { text: "Expand clean-water works and food inspections before the next season.", supporter: "Sanitation Stewards", effects: { healthcare: 5, education: 2, economy: -2 } },
+        ]
+      : [
+          { text: "Surge emergency staffing and reserve beds in vulnerable districts.", supporter: "Health Incident Command", effects: { healthcare: 8, happiness: 3, economy: -4 } },
+          { text: "Target high-risk zones with containment, tracing, and rapid support.", supporter: "Epidemic Control Office", effects: { healthcare: 6, crime: -2, politicalFreedom: -2 } },
+          { text: "Accelerate preventive care campaigns and public guidance nationwide.", supporter: "Preventive Medicine Bureau", effects: { healthcare: 5, education: 3, happiness: 2 } },
+        ]
+  }
+
+  if (crisis.type === "security") {
+    return preIndustrial
+      ? [
+          { text: "Fortify patrol routes and signal towers at exposed crossings.", supporter: "Frontier Guard", effects: { crime: -6, economy: -2, politicalFreedom: -2 } },
+          { text: "Recruit local scouts with rewards for verified threat intelligence.", supporter: "Watch Captains", effects: { crime: -4, happiness: 2, economy: -1 } },
+          { text: "Negotiate temporary non-aggression accords while defenses are rebuilt.", supporter: "Diplomatic Envoys", effects: { crime: -3, politicalFreedom: 2, economy: 1 } },
+        ]
+      : [
+          { text: "Harden critical facilities and shift security to intelligence-led operations.", supporter: "National Security Operations Center", effects: { crime: -7, technology: 4, economy: -2 } },
+          { text: "Open independent oversight on emergency powers to prevent abuse.", supporter: "Civil Oversight Board", effects: { politicalFreedom: 4, crime: -2, happiness: 3 } },
+          { text: "Prioritize targeted disruption of threat networks over mass restrictions.", supporter: "Counter-Operations Bureau", effects: { crime: -5, politicalFreedom: -1, happiness: 1 } },
+        ]
+  }
+
+  return preIndustrial
+    ? [
+        { text: "Fund open workshops so craft knowledge spreads beyond elite circles.", supporter: "Artisan Colleges", effects: { technology: 6, education: 4, economy: -2 } },
+        { text: "Set strict guild charters to control who can deploy new methods.", supporter: "Master Guild Council", effects: { technology: 3, economy: 3, politicalFreedom: -3 } },
+        { text: "Tie new inventions to public works so gains are visible to citizens.", supporter: "Civic Works Bureau", effects: { technology: 4, happiness: 3, economy: 2 } },
+      ]
+    : [
+        { text: "Open competitive grants and require broad licensing of funded breakthroughs.", supporter: "Innovation Authority", effects: { technology: 7, education: 4, economy: -2 } },
+        { text: "Concentrate strategic IP in a protected national champion program.", supporter: "Strategic Industry Office", effects: { economy: 5, technology: 4, civilRights: -3 } },
+        { text: "Pair new deployments with workforce retraining and social safeguards.", supporter: "Future of Work Council", effects: { technology: 4, happiness: 4, education: 3 } },
+      ]
+}
+
 function createIssueFromCrisis(crisis: MapCrisis, nation?: Nation): Issue {
   const template = CRISIS_TEMPLATES[crisis.type]
   const desiredOptions = crisis.severity === "high" ? 5 : crisis.severity === "medium" ? 4 : 3
@@ -761,52 +888,25 @@ function createIssueFromCrisis(crisis: MapCrisis, nation?: Nation): Issue {
     ),
   }))
 
-  const preIndustrial = ["Stone Age", "Bronze Age", "Iron Age", "Classical Era", "Medieval Era", "Renaissance"].includes(era || "")
-  const fallbackOptions: IssueOption[] = preIndustrial
-    ? [
-        {
-          id: `${crisis.id}-fallback-a`,
-          text: "Send trusted scouts first, then commit the full clan if signs are favorable.",
-          supporter: "Pathfinders Circle",
-          effects: scaleEffectsBySeverity({ economy: -2, education: 4, happiness: 2 }, crisis.severity),
-        },
-        {
-          id: `${crisis.id}-fallback-b`,
-          text: "Gather elders from each settlement to agree on one realm-wide response.",
-          supporter: "Elders Council",
-          effects: scaleEffectsBySeverity({ politicalFreedom: 4, crime: -3, economy: -2 }, crisis.severity),
-        },
-        {
-          id: `${crisis.id}-fallback-c`,
-          text: "Preserve current routines and ration stores while the shock passes.",
-          supporter: "Steward Keepers",
-          effects: scaleEffectsBySeverity({ economy: 2, happiness: -2, healthcare: 2 }, crisis.severity),
-        },
-      ]
-    : [
-        {
-          id: `${crisis.id}-fallback-a`,
-          text: "Run a phased response with regional pilots before full rollout.",
-          supporter: "Strategic Planning Office",
-          effects: scaleEffectsBySeverity({ economy: -3, education: 4, happiness: 3 }, crisis.severity),
-        },
-        {
-          id: `${crisis.id}-fallback-b`,
-          text: "Create a cross-faction oversight task force and publish weekly metrics.",
-          supporter: "National Audit Committee",
-          effects: scaleEffectsBySeverity({ politicalFreedom: 4, crime: -3, economy: -2 }, crisis.severity),
-        },
-        {
-          id: `${crisis.id}-fallback-c`,
-          text: "Hold course but deploy targeted emergency reserves.",
-          supporter: "Continuity Secretariat",
-          effects: scaleEffectsBySeverity({ economy: 2, happiness: -2, healthcare: 2 }, crisis.severity),
-        },
-      ]
+  const supplementalOptions: IssueOption[] = buildCrisisSupplementalOptions(
+    crisis,
+    era,
+    crisis.regionTerrain || region?.terrain
+  ).map((opt, idx) => ({
+    ...opt,
+    id: `${crisis.id}-supp-${idx}`,
+    effects: scaleEffectsBySeverity(
+      specializeCrisisEffects(opt.effects, crisis.regionTerrain || region?.terrain, region?.specialization),
+      crisis.severity
+    ),
+  }))
 
   const options: IssueOption[] = [...baseOptions]
-  for (const opt of fallbackOptions) {
+  const existingTexts = new Set(options.map((opt) => opt.text.toLowerCase()))
+  for (const opt of supplementalOptions) {
     if (options.length >= desiredOptions) break
+    if (existingTexts.has(opt.text.toLowerCase())) continue
+    existingTexts.add(opt.text.toLowerCase())
     options.push(opt)
   }
 
@@ -833,16 +933,6 @@ function applyEraFlavorToIssue(issue: Issue, era: GameEra): Issue {
   const preIndustrial = ["Stone Age", "Bronze Age", "Iron Age", "Classical Era", "Medieval Era", "Renaissance"].includes(era)
   if (!preIndustrial) return issue
 
-  const labelByEra: Partial<Record<GameEra, string>> = {
-    "Stone Age": "Tribal",
-    "Bronze Age": "Temple",
-    "Iron Age": "Kingdom",
-    "Classical Era": "Civic",
-    "Medieval Era": "Feudal",
-    "Renaissance": "Guild",
-  }
-  const prefix = labelByEra[era] || "Ancient"
-
   const rewrite = (text: string): string => {
     return text
       .replace(/regional/gi, "territorial")
@@ -860,12 +950,12 @@ function applyEraFlavorToIssue(issue: Issue, era: GameEra): Issue {
 
   return {
     ...issue,
-    title: `${prefix} ${rewrite(issue.title)}`,
+    title: rewrite(issue.title),
     description: rewrite(issue.description),
     options: issue.options.map((opt) => ({
       ...opt,
       text: rewrite(opt.text),
-      supporter: rewrite(opt.supporter),
+      supporter: rewrite(opt.supporter).replace(/\((.*?)\)/g, "$1"),
     })),
   }
 }
@@ -887,9 +977,17 @@ function ensureEraAdvancementOption(issue: Issue, nation: Nation): Issue {
   if (hasTechPath) return issue
 
   const bonusTech = nation.stats.technology >= 70 ? 10 : 14
+  const advancementTextByEra: Partial<Record<GameEra, string>> = {
+    "Stone Age": "Codify survival knowledge through story circles and tool apprenticeships.",
+    "Bronze Age": "Standardize bronzecraft methods and train new smithing apprentices.",
+    "Iron Age": "Expand ironworking schools and spread improved farming techniques.",
+    "Classical Era": "Fund academies and civil engineering to accelerate discovery.",
+    "Medieval Era": "Sponsor guild schools and preserve technical manuscripts.",
+    "Renaissance": "Back workshops, presses, and scientific exchange across cities.",
+  }
   const researchOption: IssueOption = {
     id: `${issue.id}-advancement`,
-    text: "Invest in knowledge transmission and toolmaking to accelerate advancement.",
+    text: advancementTextByEra[nation.era] || "Invest in knowledge transmission and state capacity to accelerate advancement.",
     supporter: "Scholars and Master Artisans",
     effects: {
       technology: bonusTech,
@@ -1014,6 +1112,49 @@ function getDesiredOptionCount(complexity: "low" | "medium" | "high"): number {
   return 3
 }
 
+function issueRepeatKey(issue: Issue): string {
+  if (issue.metadata?.crisisType && issue.metadata?.regionId) {
+    return `crisis:${issue.metadata.crisisType}:${issue.metadata.regionId}`
+  }
+  const normalizedTitle = issue.title
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\b(system stress|tribal|temple|kingdom|civic|feudal|guild)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  return `issue:${issue.category.toLowerCase()}:${normalizedTitle}`
+}
+
+function pushRecentIssueKey(existing: string[] | undefined, key: string, max = 18): string[] {
+  const withoutKey = (existing || []).filter((k) => k !== key)
+  return [...withoutKey, key].slice(-max)
+}
+
+function summarizeNationalPosture(stats: NationStats): string {
+  const stability = stats.happiness - stats.crime
+  const growth = stats.economy + stats.technology
+  if (stability >= 20 && growth >= 120) return "stable growth with strategic momentum"
+  if (stability >= 10) return "internally stable but uneven in capability"
+  if (stability <= -15) return "volatile and prone to social disruptions"
+  if (growth <= 80) return "institutionally strained and growth-constrained"
+  return "mixed conditions with manageable systemic risk"
+}
+
+function buildLoginBriefing(nation: Nation): string {
+  const recent = (nation.decisionHistory || []).slice(-3)
+  const summaryLine =
+    recent.length > 0
+      ? recent.map((entry) => entry.replace(/\s+/g, " ").trim()).join(" | ")
+      : "No recent decrees were recorded."
+  const posture = summarizeNationalPosture(nation.stats)
+  return [
+    `Welcome back to ${nation.name}.`,
+    `Era: ${nation.era}. Issues resolved: ${nation.issuesResolved}.`,
+    `Strategic posture: ${posture}.`,
+    `Recent actions: ${summaryLine}`,
+  ].join(" ")
+}
+
 function normalizeIssueOptions(
   options: IssueOption[],
   desiredCount: number,
@@ -1021,125 +1162,115 @@ function normalizeIssueOptions(
   category: string,
   era?: GameEra
 ): IssueOption[] {
-  const trimmed = options.slice(0, 5)
-  const templates: Array<Omit<IssueOption, "id">> =
-    era === "Stone Age"
+  const trimmed = options.filter((opt) => opt?.text?.trim()).slice(0, 5)
+  const preIndustrial = isPreIndustrialEra(era)
+  const textCorpus = `${issueTitle} ${category} ${trimmed.map((o) => o.text).join(" ")}`.toLowerCase()
+
+  let theme: "infrastructure" | "security" | "health" | "culture" | "economy" | "governance" | "innovation" | "food" = "governance"
+  if (/road|canal|bridge|port|transport|infrastructure|grid|logistics/.test(textCorpus)) theme = "infrastructure"
+  else if (/security|raid|war|battle|breach|crime|patrol/.test(textCorpus)) theme = "security"
+  else if (/health|disease|plague|clinic|hospital/.test(textCorpus)) theme = "health"
+  else if (/art|culture|festival|painting|ritual|identity/.test(textCorpus)) theme = "culture"
+  else if (/mine|trade|tax|economy|market|labor/.test(textCorpus)) theme = "economy"
+  else if (/innovation|technology|science|tool|forge|automation/.test(textCorpus)) theme = "innovation"
+  else if (/food|hunt|harvest|granary|mammoth|farm/.test(textCorpus)) theme = "food"
+
+  const byTheme: Record<typeof theme, Array<Omit<IssueOption, "id">>> = {
+    infrastructure: preIndustrial
       ? [
-          {
-            text: "Lead a bold hunt and claim meat, hides, and status.",
-            supporter: "Hunt Chief",
-            effects: { economy: 4, happiness: 2, population: -1 },
-          },
-          {
-            text: "Expand foraging routes and preserve stores for lean moons.",
-            supporter: "Gatherer Circle",
-            effects: { economy: 2, healthcare: 2, happiness: 1 },
-          },
-          {
-            text: "Train apprentices in knapping, firekeeping, and shelter craft.",
-            supporter: "Elder Keepers",
-            effects: { education: 3, technology: 4, economy: -2 },
-          },
-          {
-            text: "Move part of the tribe to safer camps until danger fades.",
-            supporter: "Trail Scouts",
-            effects: { crime: -2, population: 1, happiness: -1 },
-          },
-          {
-            text: "Offer tribute and rites to keep rival clans from raiding.",
-            supporter: "Shaman Circle",
-            effects: { crime: -2, politicalFreedom: -1, happiness: 1 },
-          },
+          { text: "Mobilize communal labor to repair critical routes before the next caravan cycle.", supporter: "Works Steward", effects: { economy: 5, happiness: -2, technology: 2 } },
+          { text: "Prioritize only the highest-value chokepoints and defer less critical repairs.", supporter: "Logistics Quartermaster", effects: { economy: 4, crime: -2, happiness: -1 } },
+          { text: "Grant local councils authority to coordinate materials and labor directly.", supporter: "Provincial Elders", effects: { politicalFreedom: 3, economy: 3, healthcare: 1 } },
         ]
-      : era === "Bronze Age"
-        ? [
-            {
-              text: "Standardize bronze tools and share molds across workshops.",
-              supporter: "Master Smiths",
-              effects: { technology: 4, economy: 3, happiness: -1 },
-            },
-            {
-              text: "Raise granary reserves and ration by tablet record.",
-              supporter: "Temple Stewards",
-              effects: { economy: 2, healthcare: 2, politicalFreedom: -1 },
-            },
-            {
-              text: "Call a levy from each district and secure trade roads.",
-              supporter: "War Captains",
-              effects: { crime: -3, economy: 1, happiness: -1 },
-            },
-            {
-              text: "Broker a pact among city notables before acting.",
-              supporter: "Court Scribes",
-              effects: { politicalFreedom: 2, crime: -1, economy: -1 },
-            },
-            {
-              text: "Fund apprenticeships for metalwork, farming, and records.",
-              supporter: "Guild Elders",
-              effects: { education: 3, technology: 3, economy: -2 },
-            },
-          ]
-        : era === "Iron Age"
-          ? [
-              {
-                text: "Forge iron tools at scale and push frontier production.",
-                supporter: "Forge Masters",
-                effects: { economy: 4, technology: 3, environment: -2 },
-              },
-              {
-                text: "Fortify border settlements and rotate militia duty.",
-                supporter: "Marshal Council",
-                effects: { crime: -3, happiness: -1, economy: -1 },
-              },
-              {
-                text: "Convene clan leaders to settle disputes and share burdens.",
-                supporter: "Hall of Chiefs",
-                effects: { politicalFreedom: 2, crime: -1, economy: -1 },
-              },
-              {
-                text: "Expand irrigation and maintain roads linking market towns.",
-                supporter: "Road Wardens",
-                effects: { economy: 3, healthcare: 1, education: 1 },
-              },
-              {
-                text: "Delay reform and gather reports from provincial stewards.",
-                supporter: "Royal Surveyors",
-                effects: { economy: 1, happiness: -1, education: 2 },
-              },
-            ]
-          : [
-              {
-                text: "Launch a phased pilot and reassess after one quarter.",
-                supporter: "Policy Lab Director",
-                effects: { economy: -2, education: 3, happiness: 2 },
-              },
-              {
-                text: "Negotiate a compromise package with opposition blocs.",
-                supporter: "Parliamentary Whip",
-                effects: { politicalFreedom: 3, economy: -1, crime: -2 },
-              },
-              {
-                text: "Delegate implementation to local governments with federal oversight.",
-                supporter: "Regional Affairs Minister",
-                effects: { politicalFreedom: 2, economy: 2, healthcare: 1 },
-              },
-              {
-                text: "Create an emergency stabilization fund and temporary controls.",
-                supporter: "Treasury Board",
-                effects: { economy: 3, happiness: -3, crime: -2 },
-              },
-              {
-                text: "Delay major action and intensify intelligence gathering first.",
-                supporter: "Strategic Assessment Council",
-                effects: { economy: 1, happiness: -2, education: 1 },
-              },
-            ]
+      : [
+          { text: "Harden the most fragile infrastructure nodes and add redundancy immediately.", supporter: "Infrastructure Command", effects: { economy: 6, technology: 3, gdp: -2 } },
+          { text: "Publish public reliability targets and tie contractor pay to uptime.", supporter: "Public Works Authority", effects: { economy: 4, crime: -2, politicalFreedom: 2 } },
+          { text: "Shift to controlled service windows while permanent upgrades are installed.", supporter: "Continuity Office", effects: { economy: 3, happiness: -2, healthcare: 1 } },
+        ],
+    security: preIndustrial
+      ? [
+          { text: "Reinforce border watchtowers and rotate seasoned patrols through exposed routes.", supporter: "Frontier Guard", effects: { crime: -6, economy: -2, politicalFreedom: -2 } },
+          { text: "Recruit local scouts and reward verified intelligence on hostile movements.", supporter: "Watch Captains", effects: { crime: -4, happiness: 2, economy: -1 } },
+          { text: "Negotiate temporary truces while defenses and supply lines are rebuilt.", supporter: "Diplomatic Envoys", effects: { crime: -3, politicalFreedom: 2, economy: 1 } },
+        ]
+      : [
+          { text: "Shift to intelligence-led operations against high-risk networks and actors.", supporter: "Security Operations Center", effects: { crime: -6, technology: 3, economy: -2 } },
+          { text: "Expand emergency powers with strict judicial review and expiry clauses.", supporter: "Homeland Council", effects: { crime: -5, politicalFreedom: -3, happiness: -1 } },
+          { text: "Boost visible community safety programs to rebuild trust and reporting.", supporter: "Civil Safety Board", effects: { happiness: 4, crime: -3, politicalFreedom: 2 } },
+        ],
+    health: preIndustrial
+      ? [
+          { text: "Dispatch healer teams and medicine caravans to the hardest-hit settlements.", supporter: "Healers Guild", effects: { healthcare: 7, happiness: 3, economy: -3 } },
+          { text: "Establish strict quarantine points along major roads and river crossings.", supporter: "Public Wardens", effects: { healthcare: 4, crime: -2, economy: -3 } },
+          { text: "Invest in clean-water storage and food safety inspections.", supporter: "Sanitation Stewards", effects: { healthcare: 5, education: 2, economy: -2 } },
+        ]
+      : [
+          { text: "Surge emergency staffing and reserve capacity in vulnerable districts.", supporter: "Health Incident Command", effects: { healthcare: 8, happiness: 3, economy: -4 } },
+          { text: "Target high-risk communities with rapid containment and support.", supporter: "Epidemic Control Office", effects: { healthcare: 6, crime: -2, politicalFreedom: -2 } },
+          { text: "Fund preventive care and public education to reduce future surges.", supporter: "Preventive Medicine Bureau", effects: { healthcare: 5, education: 3, happiness: 2 } },
+        ],
+    culture: preIndustrial
+      ? [
+          { text: "Sponsor ritual gatherings and shared art to strengthen social cohesion.", supporter: "Lorekeepers Council", effects: { happiness: 6, education: 2, economy: -1 } },
+          { text: "Tie cultural projects to communal labor quotas and seasonal duties.", supporter: "Work Stewards", effects: { economy: 3, happiness: 1, politicalFreedom: -1 } },
+          { text: "Let each settlement shape its own traditions under a loose common charter.", supporter: "Village Councils", effects: { politicalFreedom: 4, happiness: 3, economy: -1 } },
+        ]
+      : [
+          { text: "Fund public cultural programs to reinforce identity across regions.", supporter: "Culture Ministry", effects: { happiness: 6, education: 3, economy: -2 } },
+          { text: "Prioritize economic output and trim nonessential cultural spending.", supporter: "Fiscal Board", effects: { economy: 4, happiness: -3, education: -1 } },
+          { text: "Create local cultural grants with citizen juries and transparent scoring.", supporter: "Civic Arts Office", effects: { politicalFreedom: 3, happiness: 4, economy: -1 } },
+        ],
+    economy: preIndustrial
+      ? [
+          { text: "Stabilize market prices with reserve granaries and fair-weight inspectors.", supporter: "Market Wardens", effects: { economy: 5, happiness: 3, politicalFreedom: -1 } },
+          { text: "Grant merchant charters in exchange for taxes and route maintenance.", supporter: "Merchant League", effects: { economy: 6, gdp: 2, civilRights: -2 } },
+          { text: "Protect small producers with temporary tax relief and guild support.", supporter: "Craft Guild Coalition", effects: { economy: 3, happiness: 4, gdp: -1 } },
+        ]
+      : [
+          { text: "Launch targeted stimulus for critical sectors and stressed regions.", supporter: "Treasury Board", effects: { economy: 6, happiness: 2, gdp: -2 } },
+          { text: "Cut red tape and fast-track private investment in productive industries.", supporter: "Industry Council", effects: { economy: 7, gdp: 2, civilRights: -2 } },
+          { text: "Expand social cushioning while productivity reforms are phased in.", supporter: "Labor and Welfare Council", effects: { happiness: 5, healthcare: 2, economy: -2 } },
+        ],
+    governance: preIndustrial
+      ? [
+          { text: "Convene a realm council to codify shared law and dispute resolution.", supporter: "High Council", effects: { politicalFreedom: 4, crime: -2, economy: -1 } },
+          { text: "Centralize authority for faster decisions during this volatile period.", supporter: "Royal Court", effects: { crime: -3, politicalFreedom: -3, economy: 2 } },
+          { text: "Appoint rotating local stewards under oath and public review.", supporter: "Steward Assembly", effects: { politicalFreedom: 3, happiness: 2, economy: 1 } },
+        ]
+      : [
+          { text: "Publish a transparent implementation plan with accountable ownership.", supporter: "Executive Secretariat", effects: { politicalFreedom: 3, economy: 2, crime: -2 } },
+          { text: "Use emergency executive powers to move rapidly through bottlenecks.", supporter: "Executive Office", effects: { economy: 4, crime: -3, politicalFreedom: -3 } },
+          { text: "Delegate execution to provinces with hard national guardrails.", supporter: "Intergovernmental Affairs Council", effects: { politicalFreedom: 2, economy: 3, healthcare: 1 } },
+        ],
+    innovation: preIndustrial
+      ? [
+          { text: "Fund apprenticeships so new techniques spread beyond elite workshops.", supporter: "Master Artisans", effects: { technology: 6, education: 4, economy: -2 } },
+          { text: "Control advanced methods through licensed guild monopolies.", supporter: "Guild Syndicate", effects: { technology: 3, economy: 4, civilRights: -2 } },
+          { text: "Tie innovation grants to practical tools for farms and trade roads.", supporter: "Practical Knowledge Office", effects: { technology: 5, economy: 3, happiness: 1 } },
+        ]
+      : [
+          { text: "Open competitive innovation grants with broad licensing requirements.", supporter: "Science Authority", effects: { technology: 7, education: 4, economy: -2 } },
+          { text: "Concentrate strategic tech in national champions under state guidance.", supporter: "Strategic Industry Cabinet", effects: { economy: 5, technology: 4, civilRights: -3 } },
+          { text: "Pair automation rollout with worker retraining and transition support.", supporter: "Future of Work Council", effects: { technology: 4, happiness: 4, education: 3 } },
+        ],
+    food: preIndustrial
+      ? [
+          { text: "Prioritize high-risk, high-reward expeditions to secure major surplus.", supporter: "Hunt Chief", effects: { economy: 5, happiness: 2, population: -1 } },
+          { text: "Expand steady gathering and preserve stocks for seasonal shocks.", supporter: "Gatherer Circle", effects: { economy: 3, healthcare: 2, happiness: 2 } },
+          { text: "Distribute food stores by need and formalize ration oversight.", supporter: "Storehouse Stewards", effects: { happiness: 4, crime: -2, economy: -1 } },
+        ]
+      : [
+          { text: "Scale domestic food production with logistics support and crop insurance.", supporter: "Agriculture Board", effects: { economy: 5, healthcare: 2, gdp: -1 } },
+          { text: "Use short-term imports and price controls to stabilize household costs.", supporter: "Supply Authority", effects: { happiness: 4, economy: 2, gdp: -2 } },
+          { text: "Shift consumption incentives toward resilient and lower-cost staples.", supporter: "Food Resilience Office", effects: { healthcare: 3, economy: 2, environment: 2 } },
+        ],
+  }
 
   const existingTexts = new Set(trimmed.map((o) => o.text.toLowerCase()))
-  let idx = 0
-  while (trimmed.length < Math.min(5, desiredCount) && idx < templates.length) {
-    const candidate = templates[idx++]
+  for (const candidate of byTheme[theme]) {
+    if (trimmed.length >= Math.min(5, desiredCount)) break
     if (existingTexts.has(candidate.text.toLowerCase())) continue
+    existingTexts.add(candidate.text.toLowerCase())
     trimmed.push({
       ...candidate,
       id: `supp-${issueTitle.slice(0, 12).replace(/\s+/g, "-").toLowerCase()}-${trimmed.length}`,
@@ -1147,7 +1278,7 @@ function normalizeIssueOptions(
     })
   }
 
-  return trimmed
+  return trimmed.slice(0, Math.min(5, desiredCount))
 }
 
 const ERA_MAP_DATA: Record<GameEra, { viewBox: string; baseBorders: string[] }> = {
@@ -1630,7 +1761,9 @@ export function useGame() {
   const [recentChanges, setRecentChanges] = useState<Partial<NationStats>>({})
   const [usedIssueIds, setUsedIssueIds] = useState<Set<string>>(new Set())
   const [history, setHistory] = useState<string[]>([])
+  const [sessionBriefing, setSessionBriefing] = useState<string | null>(null)
   const [consequenceTimer, setConsequenceTimer] = useState<number>(0)
+  const briefingSeenRef = useRef<Set<string>>(new Set())
   const AI_WORKER_URL = process.env.NEXT_PUBLIC_AI_WORKER_URL || "https://statecraft-ai.paper-archon.workers.dev"
 
   // Consequence Engine: Check every 60 seconds
@@ -1657,6 +1790,18 @@ export function useGame() {
     }
     setMapCrises(buildMapCrises(nation))
   }, [nation])
+
+  useEffect(() => {
+    if (!session?.user || !nation) {
+      setSessionBriefing(null)
+      return
+    }
+    const slotKey = activeSlot || nation.slot || 1
+    const key = `${session.user.email || session.user.name || "user"}:${slotKey}:${nation.id}:${nation.issuesResolved}`
+    if (briefingSeenRef.current.has(key)) return
+    briefingSeenRef.current.add(key)
+    setSessionBriefing(buildLoginBriefing(nation))
+  }, [session?.user, nation, activeSlot])
 
   const processConsequences = useCallback(() => {
     if (!nation || !nation.pendingConsequences || nation.pendingConsequences.length === 0) return
@@ -1689,13 +1834,8 @@ export function useGame() {
       }
 
       setNation(updatedNation)
-      
-      // Save to storage
-      if (activeSlot) {
-        localStorage.setItem(`nation_slot_${activeSlot}`, JSON.stringify(updatedNation))
-      }
     }
-  }, [nation, activeSlot])
+  }, [nation])
 
   const handleMapCrisis = useCallback((crisis: MapCrisis) => {
     if (!nation) return
@@ -1786,58 +1926,11 @@ export function useGame() {
           console.error("Failed to load from DB:", error)
         }
       } else {
-        // Fallback to localStorage for all slots
-        const loadedSlots: (Nation | null)[] = [null, null, null]
-        for (let i = 1; i <= 3; i++) {
-          const savedNation = localStorage.getItem(`nation_slot_${i}`)
-          if (savedNation) {
-            const parsed = JSON.parse(savedNation)
-            const gameMode = parsed.gameMode || "Eternal"
-            const loadedNation = {
-              ...parsed,
-              slot: i,
-              gameMode,
-              era: parsed.era || (gameMode === "Eras" ? "Stone Age" : "Information Age"),
-              stats: sanitizeStats(parsed.stats),
-              ...sanitizeNationSystems(parsed),
-              issuesResolved: parsed.issuesResolved || 0,
-            } as Nation
-            if (!loadedNation.crisisArcs || loadedNation.crisisArcs.length === 0) {
-              loadedNation.crisisArcs = mergeAndAdvanceCrisisArcs(loadedNation)
-            }
-            loadedSlots[i - 1] = loadedNation
-          }
-        }
-        
-        // Backward compatibility for the old single-nation storage
-        const legacyNation = localStorage.getItem("nation")
-        if (legacyNation && !loadedSlots[0]) {
-          const parsed = JSON.parse(legacyNation)
-          const gameMode = parsed.gameMode || "Eternal"
-          const loadedNation = {
-            ...parsed,
-            slot: 1,
-            gameMode,
-            era: parsed.era || (gameMode === "Eras" ? "Stone Age" : "Information Age"),
-            stats: sanitizeStats(parsed.stats),
-            ...sanitizeNationSystems(parsed),
-            issuesResolved: parsed.issuesResolved || 0,
-          } as Nation
-          if (!loadedNation.crisisArcs || loadedNation.crisisArcs.length === 0) {
-            loadedNation.crisisArcs = mergeAndAdvanceCrisisArcs(loadedNation)
-          }
-          loadedSlots[0] = loadedNation
-          localStorage.setItem("nation_slot_1", JSON.stringify(loadedNation))
-          localStorage.removeItem("nation")
-        }
-
-        setSlots(loadedSlots)
-        if (activeSlot !== null && loadedSlots[activeSlot - 1]) {
-          const activeNation = loadedSlots[activeSlot - 1]
-          setNation(activeNation)
-          setUsedIssueIds(new Set(activeNation?.usedIssueTitles || []))
-          setHistory(activeNation?.decisionHistory || [])
-        }
+        // Saved games are authenticated-only. Guest runs are intentionally ephemeral.
+        setSlots([null, null, null])
+        setNation(null)
+        setUsedIssueIds(new Set())
+        setHistory([])
       }
       setIsLoading(false)
     }
@@ -1872,13 +1965,6 @@ export function useGame() {
         setNation(null)
         setActiveSlot(null)
       }
-      
-      localStorage.removeItem(`nation_slot_${slot}`)
-      if (slot === 1) {
-        localStorage.removeItem("nation")
-        localStorage.removeItem("decisionHistory")
-        localStorage.removeItem("usedIssueIds")
-      }
     } catch (error) {
       console.error("Failed to delete slot:", error)
     } finally {
@@ -1886,7 +1972,7 @@ export function useGame() {
     }
   }, [session, slots, activeSlot])
 
-  // Save to database or localStorage on changes
+  // Save to database on changes (authenticated users)
   useEffect(() => {
     if (!nation || activeSlot === null) return
 
@@ -1897,13 +1983,6 @@ export function useGame() {
         usedIssueTitles: Array.from(usedIssueIds),
         regions: normalizeRegions(nation.regions),
         crisisArcs: nation.crisisArcs || []
-      }
-
-      // Save to localStorage for guests or as backup
-      localStorage.setItem(`nation_slot_${activeSlot}`, JSON.stringify(nationToSave))
-      if (activeSlot === 1) {
-        // Legacy support for single slot 1
-        localStorage.setItem("nation", JSON.stringify(nationToSave))
       }
 
       // Save to database if logged in
@@ -1979,6 +2058,7 @@ export function useGame() {
       ...Array.from(usedIssueIds),
       ...(nation.usedIssueTitles || [])
     ])
+    const recentIssueKeys = new Set(nation.recentIssueKeys || [])
     
     // Handle branching future transition
     if (nation.era === "Information Age" && nation.stats.technology >= 100) {
@@ -2010,6 +2090,7 @@ export function useGame() {
     const priorityCrises = buildMapCrises(nation)
       .filter((c) => c.severity === "high")
       .filter((c) => !forbiddenSet.has(`System Stress: ${c.label}`))
+      .filter((c) => !recentIssueKeys.has(`crisis:${c.type}:${c.regionId || "unknown"}`))
 
     if (priorityCrises.length > 0) {
       const selected = priorityCrises[0]
@@ -2023,7 +2104,7 @@ export function useGame() {
     }
 
     const regionalProject = createRegionalSpecializationIssue(nation)
-    if (regionalProject && !forbiddenSet.has(regionalProject.title)) {
+    if (regionalProject && !forbiddenSet.has(regionalProject.title) && !recentIssueKeys.has(issueRepeatKey(regionalProject))) {
       const projectIssue = ensureEraAdvancementOption(applyEraFlavorToIssue(regionalProject, nation.era), nation)
       setUsedIssueIds((prev) => new Set([...Array.from(prev), projectIssue.title]))
       setCurrentIssue(projectIssue)
@@ -2032,7 +2113,7 @@ export function useGame() {
     }
 
     const advancementProject = createEraAdvancementProject(nation)
-    if (advancementProject && !forbiddenSet.has(advancementProject.title)) {
+    if (advancementProject && !forbiddenSet.has(advancementProject.title) && !recentIssueKeys.has(issueRepeatKey(advancementProject))) {
       const projectIssue = ensureEraAdvancementOption(applyEraFlavorToIssue(advancementProject, nation.era), nation)
       setUsedIssueIds((prev) => new Set([...Array.from(prev), projectIssue.title]))
       setCurrentIssue(projectIssue)
@@ -2132,7 +2213,7 @@ export function useGame() {
       }
        
        // Double check against forbidden set
-       if (forbiddenSet.has(aiIssue.title)) {
+       if (forbiddenSet.has(aiIssue.title) || recentIssueKeys.has(issueRepeatKey(aiIssue))) {
          console.warn("AI ignored forbidden list for title:", aiIssue.title)
          throw new Error("Duplicate title from AI")
        }
@@ -2150,7 +2231,9 @@ export function useGame() {
       const eraIssues = sampleIssues[nation.era as keyof typeof sampleIssues] || sampleIssues["Information Age"]
       
       // Filter out issues that have already been seen
-      const availableFallbacks = eraIssues.filter(issue => !forbiddenSet.has(issue.title))
+      const availableFallbacks = eraIssues.filter(
+        (issue) => !forbiddenSet.has(issue.title) && !recentIssueKeys.has(issueRepeatKey(issue as Issue))
+      )
       
       console.log(`Fallback Strategy: ${availableFallbacks.length} unused issues found in ${nation.era} pool`)
       
@@ -2335,6 +2418,7 @@ export function useGame() {
       decisionHistory: [...(nation.decisionHistory || []), historyEntry].slice(-100),
       historyLog: [...(nation.historyLog || []), summary, ...arcOutcome.logs].slice(-30),
       usedIssueTitles: Array.from(new Set(newUsedTitles)).filter(Boolean),
+      recentIssueKeys: pushRecentIssueKey(nation.recentIssueKeys, issueRepeatKey(currentIssue)),
       pendingConsequences: newPendingConsequences,
       institutions: updatedInstitutions,
       factions: updatedFactions,
@@ -2427,14 +2511,6 @@ export function useGame() {
       setNation(null)
       setHistory([])
       setUsedIssueIds(new Set())
-      
-      localStorage.removeItem(`nation_slot_${activeSlot}`)
-      if (activeSlot === 1) {
-        localStorage.removeItem("nation")
-        localStorage.removeItem("decisionHistory")
-        localStorage.removeItem("usedIssueIds")
-      }
-      
       if (session?.user) {
         await fetch(`/api/nation?slot=${activeSlot}`, { method: "DELETE" })
       }
@@ -2454,6 +2530,7 @@ export function useGame() {
     currentIssue,
     isLoading,
     recentChanges,
+    sessionBriefing,
     history,
     mapCrises,
     createNation,
@@ -2468,5 +2545,6 @@ export function useGame() {
     activeSlot,
     selectSlot,
     deleteSlot,
+    dismissBriefing: () => setSessionBriefing(null),
   }
 }

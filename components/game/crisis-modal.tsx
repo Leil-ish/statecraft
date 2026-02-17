@@ -98,7 +98,7 @@ export function CrisisModal({
           <div className="space-y-6">
             {/* Predefined Options */}
             <div className="space-y-3">
-              <h3 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] px-1">Predefined Protocols</h3>
+              <h3 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] px-1">Response Paths</h3>
               <div className="max-h-[38vh] overflow-y-auto overscroll-contain pr-1 space-y-3">
                 {issue.options.map((option, index) => (
                   <motion.button
@@ -142,7 +142,7 @@ export function CrisisModal({
             {/* Custom Response Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
-                <h3 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Direct Executive Command</h3>
+                <h3 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Custom Directive</h3>
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3 text-purple-400" />
                   <span className="text-[10px] font-bold text-purple-400/60 uppercase tracking-widest">AI Interpreter</span>
@@ -153,7 +153,7 @@ export function CrisisModal({
                 <textarea
                   value={customResponse}
                   onChange={(e) => setCustomResponse(e.target.value)}
-                  placeholder="Type your custom decree here..."
+                  placeholder="Write a specific order..."
                   className={cn(
                     "w-full h-24 p-4 rounded-2xl bg-white/5 border border-white/5 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all outline-none text-sm font-medium resize-none placeholder:text-white/20",
                     isLoading && "opacity-50 pointer-events-none"
@@ -178,7 +178,7 @@ export function CrisisModal({
                 </Button>
               </div>
               <p className="text-[10px] text-white/20 italic px-1">
-                Note: Custom commands are analyzed by the Imperial AI to determine geopolitical impact.
+                Note: Custom directives are interpreted for plausible geopolitical effects.
               </p>
             </div>
           </div>
@@ -187,7 +187,7 @@ export function CrisisModal({
         <div className="shrink-0 px-4 sm:px-8 py-4 bg-red-500/5 border-t border-red-500/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-red-500/60 uppercase tracking-widest">Awaiting Direct Action</span>
+            <span className="text-[10px] font-bold text-red-500/60 uppercase tracking-widest">Crisis Window Open</span>
           </div>
           <button 
             onClick={onClose}

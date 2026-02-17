@@ -24,6 +24,7 @@ import {
   User,
   LogOut,
   ShieldCheck,
+  X,
   Building2,
   Users2,
   Scale,
@@ -48,6 +49,7 @@ interface GameDashboardProps {
   onGenerateIssue: () => void
   isLoading?: boolean
   recentChanges?: Partial<NationStats>
+  sessionBriefing?: string | null
   decisionHistory?: string[]
   mapCrises?: MapCrisis[]
   onNewEmpire?: () => void
@@ -56,6 +58,7 @@ interface GameDashboardProps {
   onCustomResponse?: (text: string) => void
   isCrisisModalOpen?: boolean
   setIsCrisisModalOpen?: (open: boolean) => void
+  onDismissBriefing?: () => void
 }
 
 const primaryStats: (keyof NationStats)[] = ["economy", "civilRights", "politicalFreedom", "environment"]
@@ -84,6 +87,7 @@ export function GameDashboard({
   onGenerateIssue,
   isLoading = false,
   recentChanges = {},
+  sessionBriefing,
   decisionHistory,
   mapCrises = [],
   onNewEmpire,
@@ -91,7 +95,8 @@ export function GameDashboard({
   onMapCrisis,
   onCustomResponse,
   isCrisisModalOpen = false,
-  setIsCrisisModalOpen
+  setIsCrisisModalOpen,
+  onDismissBriefing,
 }: GameDashboardProps) {
   const { data: session } = useSession()
 
@@ -230,7 +235,7 @@ export function GameDashboard({
               </div>
             </div>
 
-            <nav className="hidden lg:flex items-center gap-1 p-1 bg-white/5 rounded-2xl border border-white/5">
+            <nav className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl border border-white/5 overflow-x-auto max-w-[52vw] sm:max-w-[60vw] lg:max-w-none">
               {[
                 { id: "overview", label: "Overview", icon: LayoutDashboard },
                 { id: "history", label: "Chronicles", icon: HistoryIcon },
@@ -241,14 +246,14 @@ export function GameDashboard({
                   key={item.id}
                   onClick={() => setCurrentView(item.id as GameView)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300",
+                    "flex shrink-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-300",
                     currentView === item.id 
                       ? "bg-white/10 text-white shadow-lg" 
                       : "text-white/40 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <item.icon className="h-3.5 w-3.5" />
-                  {item.label}
+                  <span className="hidden sm:inline">{item.label}</span>
                 </button>
               ))}
             </nav>
@@ -299,10 +304,31 @@ export function GameDashboard({
               className="space-y-8"
             >
               <NationHeader nation={nation} />
+
+              {sessionBriefing && (
+                <section className="rounded-3xl border border-blue-500/20 bg-blue-500/10 p-4 sm:p-5 backdrop-blur-xl">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-300/80">On Login Briefing</p>
+                      <p className="text-sm text-white/80 leading-relaxed">{sessionBriefing}</p>
+                    </div>
+                    {onDismissBriefing && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onDismissBriefing}
+                        className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </section>
+              )}
                 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Stats Column */}
-                <div className="lg:col-span-8 space-y-8 order-1">
+                <div className="lg:col-span-12 space-y-8 order-1">
                   <section className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -437,12 +463,12 @@ export function GameDashboard({
                 </div>
 
                 {/* Decisions and Events - Moves up on mobile, stays right on desktop */}
-                <div className="lg:col-span-4 lg:row-span-2 order-2 lg:order-none space-y-8">
-                  <section className="sticky top-28 space-y-4">
+                <div className="lg:col-span-6 lg:col-start-4 order-2 lg:order-none space-y-8">
+                  <section className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-4 bg-amber-500 rounded-full" />
-                        <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-white/40">Active Proclamation</h2>
+                        <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-white/40">Current Policy Front</h2>
                       </div>
                       {currentIssue?.isMapEvent && (
                         <Badge variant="destructive" className="animate-pulse bg-red-500/20 text-red-400 border-red-500/50 text-[8px] uppercase tracking-widest font-bold">
@@ -484,9 +510,9 @@ export function GameDashboard({
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <h3 className="text-lg font-bold text-white tracking-tight">Administrative Silence</h3>
+                            <h3 className="text-lg font-bold text-white tracking-tight">Ready For Next Policy Decision</h3>
                             <p className="text-sm text-white/40 leading-relaxed max-w-[240px]">
-                              The bureaucracy is awaiting your command. Generate a new legislative priority.
+                              Existing decrees remain active. Open a new issue to set your next strategic priority.
                             </p>
                           </div>
                           <Button 
@@ -499,7 +525,7 @@ export function GameDashboard({
                             ) : (
                               <>
                                 <Zap className="h-4 w-4 mr-2" />
-                                Formulate Next Decree
+                                Open Next Issue
                               </>
                             )}
                           </Button>
@@ -536,7 +562,7 @@ export function GameDashboard({
                 </div>
 
                 {/* Map Section - Below decisions on mobile, below stats on desktop */}
-                <div className="lg:col-span-8 space-y-8 order-3 lg:order-none">
+                <div className="lg:col-span-7 lg:col-start-1 space-y-8 order-3 lg:order-none">
                   <section className="space-y-4">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-4 bg-purple-500 rounded-full" />

@@ -128,7 +128,7 @@ export function IssueCard({ issue, onSelectOption, isLoading = false, era }: Iss
         <div className="px-8 py-4 bg-white/5 border-t border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Awaiting Executive Decision</span>
+            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Decision Window Open</span>
           </div>
           <div className="flex items-center gap-1">
              <Sparkles className="h-3 w-3 text-purple-400" />
