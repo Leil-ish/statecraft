@@ -22,7 +22,7 @@ import {
   Orbit
 } from "lucide-react"
 import type { Nation, GameEra } from "@/lib/game-types"
-import { formatPopulation } from "@/lib/game-types"
+import { formatPopulation, getGovernmentLeadershipLabel } from "@/lib/game-types"
 
 interface NationHeaderProps {
   nation: Nation
@@ -42,11 +42,47 @@ const eraConfig: Record<GameEra, { icon: any, color: string, bgColor: string }> 
   "Intergalactic Empire": { icon: Orbit, color: "text-indigo-400", bgColor: "bg-indigo-400/10" },
 }
 
+const ERA_START_YEAR: Record<GameEra, number> = {
+  "Stone Age": -10000,
+  "Bronze Age": -3300,
+  "Iron Age": -1200,
+  "Classical Era": -500,
+  "Medieval Era": 500,
+  "Renaissance": 1400,
+  "Industrial Revolution": 1760,
+  "Atomic Age": 1945,
+  "Information Age": 1990,
+  "Cyberpunk Era": 2080,
+  "Intergalactic Empire": 2300,
+}
+
+function formatHistoricalYear(year: number): string {
+  if (year < 0) return `${Math.abs(year)} BCE`
+  return `${year} CE`
+}
+
+function getEraCalendarYear(nation: Nation): number {
+  if (nation.gameMode !== "Eras") {
+    return new Date().getFullYear()
+  }
+
+  const currentStart = ERA_START_YEAR[nation.era] ?? 0
+  const ordered = Object.entries(ERA_START_YEAR) as [GameEra, number][]
+  const idx = ordered.findIndex(([era]) => era === nation.era)
+  const nextStart = idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1][1] : currentStart + 300
+  const span = Math.max(30, nextStart - currentStart)
+  const techProgress = Math.max(0, Math.min(1, nation.stats.technology / 100))
+  const turnProgress = (nation.issuesResolved % 20) / 20
+  const progress = Math.max(0, Math.min(1, techProgress * 0.75 + turnProgress * 0.25))
+  return Math.round(currentStart + span * progress)
+}
+
 export function NationHeader({ nation }: NationHeaderProps) {
   const foundedDate = new Date(nation.founded).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
   })
+  const eraYear = getEraCalendarYear(nation)
   
   const currentEra = eraConfig[nation.era] || eraConfig["Information Age"]
   const EraIcon = currentEra.icon
@@ -102,7 +138,9 @@ export function NationHeader({ nation }: NationHeaderProps) {
                   <Crown className="h-4 w-4 text-amber-400" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Head of State</span>
+                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                    {getGovernmentLeadershipLabel(nation.governmentType)}
+                  </span>
                   <span className="text-sm font-bold text-white/80">{nation.leader}</span>
                 </div>
               </div>
@@ -132,8 +170,12 @@ export function NationHeader({ nation }: NationHeaderProps) {
                   <Calendar className="h-4 w-4 text-blue-400" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Foundation Date</span>
-                  <span className="text-sm font-bold text-white/80">{foundedDate}</span>
+                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                    {nation.gameMode === "Eras" ? "Current Year" : "Foundation Date"}
+                  </span>
+                  <span className="text-sm font-bold text-white/80">
+                    {nation.gameMode === "Eras" ? formatHistoricalYear(eraYear) : foundedDate}
+                  </span>
                 </div>
               </div>
             </div>

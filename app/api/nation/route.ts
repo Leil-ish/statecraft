@@ -43,7 +43,6 @@ export async function POST(req: Request) {
         regions: JSON.stringify(nation.regions || []),
         crisisArcs: JSON.stringify(nation.crisisArcs || []),
         issuesResolved: nation.issuesResolved || 0,
-        founded: nation.founded ? new Date(nation.founded) : undefined,
       },
       create: {
         id: nationId,
@@ -71,14 +70,19 @@ export async function POST(req: Request) {
         regions: JSON.stringify(nation.regions || []),
         crisisArcs: JSON.stringify(nation.crisisArcs || []),
         issuesResolved: nation.issuesResolved || 0,
-        founded: nation.founded ? new Date(nation.founded) : undefined,
       },
     });
 
     return NextResponse.json(updatedNation);
   } catch (error) {
     console.error("Failed to save nation:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -108,7 +112,13 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete nation:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -146,6 +156,12 @@ export async function GET() {
     })));
   } catch (error) {
     console.error("Failed to fetch nations:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }

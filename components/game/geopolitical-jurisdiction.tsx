@@ -114,11 +114,58 @@ export function GeopoliticalJurisdiction({ era, nationName, stats, regions = [],
 
   const pathD = useMemo(() => pointsToPath(TERRITORY_SHAPES[territoryLevel]), [territoryLevel])
   const isModern = ["Information Age", "Cyberpunk Era", "Intergalactic Empire"].includes(era)
-  const administrativeNote = ERA_CAPTIONS[era] || ERA_CAPTIONS["Information Age"]
+  const chronicleFragment = ERA_CAPTIONS[era] || ERA_CAPTIONS["Information Age"]
 
-  const selectedRegion = regions.find((r) => r.id === selectedRegionId) || regions[0] || null
+  const selectedRegion = selectedRegionId ? regions.find((r) => r.id === selectedRegionId) || null : null
   const selectedRegionCrisisCount = selectedRegion ? crises.filter((c) => c.regionId === selectedRegion.id).length : 0
   const hasActionableSignal = crises.length > 0
+  const regionCenterById = useMemo(() => {
+    const centers = new Map<string, Point>()
+    regions.forEach((region, idx) => {
+      centers.set(region.id, centroid(regionShape(region, idx)))
+    })
+    return centers
+  }, [regions])
+
+  const crisisCountByRegion = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const crisis of crises) {
+      if (!crisis.regionId) continue
+      counts.set(crisis.regionId, (counts.get(crisis.regionId) || 0) + 1)
+    }
+    return counts
+  }, [crises])
+  const crisisRenderPointById = useMemo(() => {
+    const points = new Map<string, Point>()
+    const seenByRegion = new Map<string, number>()
+
+    for (const crisis of crises) {
+      if (!crisis.regionId) {
+        points.set(crisis.id, { x: crisis.x, y: crisis.y })
+        continue
+      }
+
+      const center = regionCenterById.get(crisis.regionId)
+      if (!center) {
+        points.set(crisis.id, { x: crisis.x, y: crisis.y })
+        continue
+      }
+
+      const index = seenByRegion.get(crisis.regionId) || 0
+      seenByRegion.set(crisis.regionId, index + 1)
+      const total = crisisCountByRegion.get(crisis.regionId) || 1
+
+      // Keep dots near their region centroid and fan out only when stacked.
+      const radius = total > 1 ? Math.min(2.2, 0.6 + total * 0.25) : 0
+      const angle = total > 1 ? (Math.PI * 2 * index) / total : 0
+      points.set(crisis.id, {
+        x: center.x + radius * Math.cos(angle),
+        y: center.y - 3.8 + radius * Math.sin(angle),
+      })
+    }
+
+    return points
+  }, [crises, regionCenterById, crisisCountByRegion])
 
   useEffect(() => {
     if (regions.length === 0) {
@@ -129,22 +176,9 @@ export function GeopoliticalJurisdiction({ era, nationName, stats, regions = [],
     // Preserve explicit user selection if it still exists.
     if (selectedRegionId && regions.some((r) => r.id === selectedRegionId)) return
 
-    // Auto-focus only when there is a real crisis context.
-    if (crises.length > 0) {
-      const counts = new Map<string, number>()
-      for (const crisis of crises) {
-        if (!crisis.regionId) continue
-        counts.set(crisis.regionId, (counts.get(crisis.regionId) || 0) + 1)
-      }
-      const bestRegion = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
-      if (bestRegion) {
-        setSelectedRegionId(bestRegion)
-        return
-      }
-    }
-
+    // Do not auto-focus to avoid misleading jumps when crisis data updates.
     setSelectedRegionId(null)
-  }, [regions, crises, selectedRegionId])
+  }, [regions, selectedRegionId])
 
   return (
     <div
@@ -159,56 +193,76 @@ export function GeopoliticalJurisdiction({ era, nationName, stats, regions = [],
 
       <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full p-8 select-none" preserveAspectRatio="xMidYMid meet">
         <defs>
-          <clipPath id="territory-clip">
-            <motion.path animate={{ d: pathD }} transition={{ duration: 1.5, ease: "easeInOut" }} />
-          </clipPath>
-
           <pattern id="grid-pattern" width="10" height="10" patternUnits="userSpaceOnUse">
             <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.1" className="text-blue-400/20" />
           </pattern>
         </defs>
 
-        <g clipPath="url(#territory-clip)">
-          <rect width="100" height="100" fill="url(#grid-pattern)" className="opacity-50" />
+        <rect width="100" height="100" fill="url(#grid-pattern)" className="opacity-50" />
 
-          {regions.map((region, idx) => {
-            const shape = regionShape(region, idx)
-            const regionPath = pointsToPath(shape)
-            const center = centroid(shape)
-            const isSelected = selectedRegionId === region.id
-            return (
-              <g key={region.id}>
+        {regions.map((region, idx) => {
+          const shape = regionShape(region, idx)
+          const regionPath = pointsToPath(shape)
+          const center = centroid(shape)
+          const isSelected = selectedRegionId === region.id
+          const crisisCount = crisisCountByRegion.get(region.id) || 0
+          const isCrisisRegion = crisisCount > 0
+          return (
+            <g key={region.id}>
+              {isCrisisRegion && (
                 <path
                   d={regionPath}
-                  className={cn(
-                    "cursor-pointer stroke-white/20 transition-all",
-                    regionFill(region.stability),
-                    isSelected ? "stroke-blue-300/80" : "hover:stroke-white/45"
-                  )}
-                  strokeWidth={isSelected ? 0.8 : 0.45}
-                  onPointerDown={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setSelectedRegionId(region.id)
-                    onRegionClick?.(region)
-                  }}
+                  className="fill-red-500/8 pointer-events-none"
+                  stroke="none"
                 />
-                <text
-                  x={center.x}
-                  y={center.y}
-                  textAnchor="middle"
-                  className="fill-white/65 text-[3.2px] font-semibold pointer-events-none"
-                >
-                  {region.name.split(" ")[0]}
-                </text>
-              </g>
-            )
-          })}
-        </g>
+              )}
+              <path
+                d={regionPath}
+                className={cn(
+                  "cursor-pointer stroke-white/20 transition-all",
+                  regionFill(region.stability),
+                  isSelected
+                    ? "stroke-blue-300/80"
+                    : isCrisisRegion
+                      ? "stroke-amber-300/80"
+                      : "hover:stroke-white/45"
+                )}
+                strokeWidth={isSelected ? 0.8 : isCrisisRegion ? 0.7 : 0.45}
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setSelectedRegionId(region.id)
+                  onRegionClick?.(region)
+                }}
+              />
+              <text
+                x={center.x}
+                y={center.y}
+                textAnchor="middle"
+                className="fill-white/65 text-[3.2px] font-semibold pointer-events-none"
+              >
+                {region.name.split(" ")[0]}
+              </text>
+              {isCrisisRegion && (
+                <g className="pointer-events-none">
+                  <circle cx={center.x} cy={center.y - 3.5} r={2.2} className="fill-amber-400/90" />
+                  <text x={center.x} y={center.y - 2.8} textAnchor="middle" className="fill-black text-[2.8px] font-black">
+                    {crisisCount}
+                  </text>
+                </g>
+              )}
+            </g>
+          )
+        })}
 
-        <motion.path
-          animate={{ d: pathD }}
-          transition={{ duration: 1.5, ease: "easeInOut" }}
+        <path
+          d={pathD}
+          className={cn("fill-blue-500/5 transition-colors duration-1000", isModern ? "stroke-blue-400/50" : "stroke-white/20")}
+          style={{ strokeDasharray: isModern ? "1, 2" : "none", strokeWidth: 0.35 }}
+        />
+
+        <path
+          d={pathD}
           className={cn("fill-transparent stroke-[0.65] transition-colors duration-1000", isModern ? "stroke-blue-400/70" : "stroke-white/35")}
           style={{ strokeDasharray: isModern ? "1, 2" : "none" }}
         />
@@ -216,6 +270,7 @@ export function GeopoliticalJurisdiction({ era, nationName, stats, regions = [],
         <AnimatePresence>
           {crises.map((crisis) => {
             const style = severityStyle(crisis.severity)
+            const renderPoint = crisisRenderPointById.get(crisis.id) || { x: crisis.x, y: crisis.y }
             return (
               <motion.g
                 key={crisis.id}
@@ -226,18 +281,19 @@ export function GeopoliticalJurisdiction({ era, nationName, stats, regions = [],
                 onPointerDown={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
+                  if (crisis.regionId) setSelectedRegionId(crisis.regionId)
                   onCrisisClick?.(crisis)
                 }}
               >
                 <motion.circle
-                  cx={crisis.x}
-                  cy={crisis.y}
+                  cx={renderPoint.x}
+                  cy={renderPoint.y}
                   r={1.6 + style.size}
                   className={style.aura}
                   animate={{ scale: [1, 1.5, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
-                <circle cx={crisis.x} cy={crisis.y} r={0.6 + style.size * 0.2} className={style.dot} />
+                <circle cx={renderPoint.x} cy={renderPoint.y} r={0.6 + style.size * 0.2} className={style.dot} />
               </motion.g>
             )
           })}
@@ -289,8 +345,8 @@ export function GeopoliticalJurisdiction({ era, nationName, stats, regions = [],
       <div className="absolute bottom-6 left-6 right-6 z-20 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-          <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Administrative Note:</span>
-          <span className="text-[10px] font-medium text-white/40 italic truncate">{administrativeNote}</span>
+          <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Chronicle Fragment:</span>
+          <span className="text-[10px] font-medium text-white/40 italic truncate">{chronicleFragment}</span>
         </div>
 
         <div className="flex items-center gap-4">

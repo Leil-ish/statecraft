@@ -205,7 +205,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
           <FeatureCard 
             icon={Zap}
             title="Policy Simulation"
-            description="Navigate dynamic dilemmas powered by an advanced administrative engine that reacts to your legislative style."
+            description="Navigate dynamic dilemmas powered by a reactive statecraft engine that adapts to your governing style."
             color="blue"
             delay={0.5}
           />

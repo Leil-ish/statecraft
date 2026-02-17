@@ -16,7 +16,7 @@ export default {
 
     try {
       const rawBody = await request.json() as any;
-      const mode = rawBody.mode || "generate"; // "generate" or "interpret"
+      const mode = rawBody.mode || "generate"; // "generate", "interpret", or "expand-options"
 
       // Handle both flat and nested nation structure
       const nationName = rawBody.nationName || rawBody.nation?.name || "The Nation";
@@ -32,11 +32,18 @@ export default {
       const activePolicies = rawBody.activePolicies || [];
       const complexity = rawBody.complexity || "medium";
       const desiredOptionCount = Math.max(3, Math.min(5, Number(rawBody.desiredOptionCount) || 4));
+      const additionalOptionCount = Math.max(1, Math.min(4, Number(rawBody.additionalOptionCount) || 2));
+      const requireAdvancementPath = Boolean(rawBody.requireAdvancementPath);
       const isEarlyEra = ["Stone Age", "Bronze Age", "Iron Age", "Classical Era", "Medieval Era", "Renaissance"].includes(era);
 
       // For interpretation mode
       const crisisContext = rawBody.crisisContext || "";
       const userResponse = rawBody.userResponse || "";
+      const issue = rawBody.issue || {};
+      const issueTitle = issue.title || "National Decree";
+      const issueCategory = issue.category || "General";
+      const issueDescription = issue.description || "The realm must choose a path.";
+      const existingOptions = Array.isArray(issue.options) ? issue.options : [];
 
       // Define Era-specific personalities and linguistic styles
       const eraPersonalities: Record<string, { role: string, style: string, conflict: string, keywords: string }> = {
@@ -135,6 +142,50 @@ Output ONLY JSON in this format:
   }
 }`;
         userPrompt = `Interpret this command: "${userResponse}" for the crisis: ${crisisContext}`;
+      } else if (mode === "expand-options") {
+        systemPrompt = `You are the AI game master for Statecraft.
+Role: ${personality.role} in a ${governmentType} (${era}).
+Task: Generate additional policy options for an already-defined issue.
+Nation Context: ${nationName} led by ${leader}. Motto: "${motto}".
+Recent History: ${historyLog && historyLog.length > 0 ? historyLog.slice(-6).join(" | ") : "None"}.
+Institutions: ${JSON.stringify(institutions)}.
+Factions: ${JSON.stringify(factions)}.
+Recent Policies: ${activePolicies.length > 0 ? activePolicies.slice(-6).map((p: any) => p.title).join(" | ") : "None"}.
+
+Issue:
+- Title: ${issueTitle}
+- Category: ${issueCategory}
+- Description: ${issueDescription}
+- Existing Options: ${JSON.stringify(existingOptions)}
+
+Output ONLY JSON in this format with exactly ${additionalOptionCount} items:
+{
+  "options": [
+    { "text": "Option text", "supporter": "Faction or institution", "effects": { "economy": 3, "happiness": -1 } }
+  ]
+}
+
+Rules:
+- Every new option must directly fit the issue context above.
+- Do not repeat or closely paraphrase existing options.
+- Make options strategically distinct from each other.
+- Keep each stat effect between -25 and 25.
+- Use 2 to 4 affected stats per option.
+- population/gdp effects should usually stay between -8 and 8.
+- Prioritize creative but plausible statecraft choices.
+- In Eras mode logic, include at least one option with a positive "technology" effect of 8 or more when plausible for the issue and era.`;
+
+        if (requireAdvancementPath) {
+          systemPrompt += `
+- Hard requirement: include at least one option with "technology" >= 8 to preserve era advancement paths.`;
+        }
+
+        if (isEarlyEra) {
+          systemPrompt += `
+- Early-era authenticity rule: avoid modern or futuristic concepts (e.g., AI, internet, algorithm, robotics, nuclear, satellites, digital media, genetics).`;
+        }
+
+        userPrompt = `Generate exactly ${additionalOptionCount} additional options for this issue.`;
       } else {
         const themeWords = ["Betrayal", "Abundance", "Fear", "Curiosity", "Sacrifice", "Discovery", "Inequality", "Utopia", "Legacy", "Subversion", "Purity", "Decay", "Crisis", "Ambition"];
         const randomTheme = themeWords[Math.floor(Math.random() * themeWords.length)];

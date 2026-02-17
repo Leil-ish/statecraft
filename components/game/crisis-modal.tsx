@@ -1,24 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogDescription,
-  DialogFooter
+  DialogDescription
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
-  AlertTriangle, 
   ChevronRight, 
   Send, 
   ShieldAlert, 
-  Zap,
-  MessageSquare
+  Zap
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Issue, IssueOption } from "@/lib/game-types"
@@ -60,11 +57,11 @@ export function CrisisModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] bg-black/90 border-white/10 backdrop-blur-2xl text-white rounded-[32px] overflow-hidden p-0 gap-0">
+      <DialogContent className="!flex !flex-col w-[calc(100vw-1rem)] sm:w-full sm:max-w-[600px] max-h-[92vh] bg-black/90 border-white/10 backdrop-blur-2xl text-white rounded-[32px] overflow-hidden p-0 gap-0">
         {/* Header Accent */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 shrink-0" />
         
-        <div className="p-8 space-y-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
           <DialogHeader className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -102,42 +99,44 @@ export function CrisisModal({
             {/* Predefined Options */}
             <div className="space-y-3">
               <h3 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] px-1">Predefined Protocols</h3>
-              {issue.options.map((option, index) => (
-                <motion.button
-                  key={option.id}
-                  onClick={() => onSelectOption(option)}
-                  disabled={isLoading}
-                  className={cn(
-                    "w-full p-4 rounded-2xl text-left transition-all relative group overflow-hidden",
-                    "bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20",
-                    isLoading && "opacity-50 cursor-not-allowed"
-                  )}
-                  whileHover={{ x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="relative flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-white/40 border border-white/10">
-                        {String.fromCharCode(65 + index)}
+              <div className="max-h-[38vh] overflow-y-auto overscroll-contain pr-1 space-y-3">
+                {issue.options.map((option, index) => (
+                  <motion.button
+                    key={option.id}
+                    onClick={() => onSelectOption(option)}
+                    disabled={isLoading}
+                    className={cn(
+                      "w-full p-4 rounded-2xl text-left transition-all relative group overflow-hidden",
+                      "bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20",
+                      isLoading && "opacity-50 cursor-not-allowed"
+                    )}
+                    whileHover={{ x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="relative flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-white/40 border border-white/10">
+                          {String.fromCharCode(65 + index)}
+                        </div>
+                        <span className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">
+                          {option.text}
+                        </span>
                       </div>
-                      <span className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">
-                        {option.text}
-                      </span>
+                      <ChevronRight className="h-4 w-4 text-white/20 group-hover:text-red-400 transition-colors" />
                     </div>
-                    <ChevronRight className="h-4 w-4 text-white/20 group-hover:text-red-400 transition-colors" />
-                  </div>
-                  <div className="relative mt-3 flex flex-wrap gap-1.5">
-                    {Object.entries(option.effects).slice(0, 4).map(([key, value]) => (
-                      <span
-                        key={`${option.id}-${key}`}
-                        className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 bg-black/30 text-white/60"
-                      >
-                        {formatEffect(value as number, key)}
-                      </span>
-                    ))}
-                  </div>
-                </motion.button>
-              ))}
+                    <div className="relative mt-3 flex flex-wrap gap-1.5">
+                      {Object.entries(option.effects).slice(0, 4).map(([key, value]) => (
+                        <span
+                          key={`${option.id}-${key}`}
+                          className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 bg-black/30 text-white/60"
+                        >
+                          {formatEffect(value as number, key)}
+                        </span>
+                      ))}
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
             </div>
 
             {/* Custom Response Section */}
@@ -185,7 +184,7 @@ export function CrisisModal({
           </div>
         </div>
 
-        <div className="px-8 py-4 bg-red-500/5 border-t border-red-500/10 flex items-center justify-between">
+        <div className="shrink-0 px-4 sm:px-8 py-4 bg-red-500/5 border-t border-red-500/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             <span className="text-[10px] font-bold text-red-500/60 uppercase tracking-widest">Awaiting Direct Action</span>

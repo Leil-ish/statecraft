@@ -92,9 +92,12 @@ export interface Nation {
   factions?: Record<FactionKey, number>
   activePolicies?: PolicyCard[]
   crisisArcs?: MapCrisis[]
+  crisisLoadStreak?: number
+  recentIssueKeys?: string[]
   pendingConsequences?: {
     issueTitle: string
     optionText: string
+    dueAtIssueCount?: number
     consequence: NonNullable<IssueOption["consequence"]>
   }[]
 }
@@ -127,7 +130,7 @@ export interface Issue {
     regionId?: string
     regionName?: string
     stage?: number
-    projectType?: "regional-specialization"
+    projectType?: "regional-specialization" | "founding-currency" | "founding-capital" | "founding-leadership"
   }
 }
 
@@ -257,7 +260,101 @@ export function formatPopulation(pop: number): string {
   return pop.toString()
 }
 
+export function getGovernmentLeadershipLabel(governmentType: string): string {
+  const type = governmentType.toLowerCase()
+  if (type.includes("monarchy") || type.includes("realm")) return "Crowned Authority"
+  if (type.includes("theocracy") || type.includes("temple")) return "Sacred Steward"
+  if (type.includes("corporate") || type.includes("mercantile") || type.includes("league")) return "Executive Office"
+  if (type.includes("authoritarian") || type.includes("directorate")) return "Supreme Command"
+  if (type.includes("anarchy")) return "Coordinating Voice"
+  if (type.includes("republic") || type.includes("democracy") || type.includes("commonwealth")) return "Elected Mandate"
+  return "National Leadership"
+}
+
+export function getLeaderTitleSuggestions(governmentType: string): string[] {
+  const type = governmentType.toLowerCase()
+
+  if (type.includes("monarchy") || type.includes("realm")) {
+    return ["Keeper of the Iron Crown", "First Banner of the Realm", "Sovereign of Hearth and Horizon"]
+  }
+  if (type.includes("theocracy") || type.includes("temple")) {
+    return ["High Oracle of State", "Steward of the Sacred Charter", "Warden of Divine Mandate"]
+  }
+  if (type.includes("corporate") || type.includes("mercantile") || type.includes("league")) {
+    return ["Chief Prosperity Architect", "Prime Negotiator of the League", "Grand Executive of Civic Profit"]
+  }
+  if (type.includes("authoritarian") || type.includes("directorate")) {
+    return ["Marshal of National Will", "First Directive Officer", "Guardian of Order Protocol"]
+  }
+  if (type.includes("anarchy") || type.includes("plural")) {
+    return ["Rotating Voice of the Commons", "Convener of Many Banners", "First Among Unruly Equals"]
+  }
+  if (type.includes("republic") || type.includes("democracy") || type.includes("commonwealth")) {
+    return ["Prime Steward of the Republic", "Speaker of the National Assembly", "Custodian of the Public Trust"]
+  }
+
+  return ["High Chancellor", "Civic Pathfinder", "First Steward of the State"]
+}
+
+export function getLeaderTitleSuggestionsFromSeed(governmentType: string, seed = 0): string[] {
+  const base = getLeaderTitleSuggestions(governmentType)
+  const type = governmentType.toLowerCase()
+  const extrasByFamily: Record<string, string[]> = {
+    monarchy: ["Keeper of the Seven Seals", "Sun-Crowned Regent", "Warden of the Royal Standard"],
+    theocracy: ["Voice of the Eternal Canon", "First Light of the Temple", "Keeper of Sacred Ordinance"],
+    corporate: ["Chief Synergy Marshal", "Quartermaster of Ambition", "Prime Ledger Visionary"],
+    mercantile: ["Harbormaster of Fortune", "Grand Broker of Stars", "Steward of the Trading Dawn"],
+    authoritarian: ["Supreme Stabilizer", "First Executor of Order", "Iron Custodian of State Protocol"],
+    directorate: ["Marshal of the Executive Matrix", "Directive Primarch", "Custodian of the Core Mandate"],
+    anarchy: ["Coordinator of Constructive Chaos", "Speaker for Unruly Harmony", "First Convenor of Free Banners"],
+    plural: ["Rotating Convener of Many Voices", "Mediator of the Great Assembly", "Custodian of Consensus"],
+    republic: ["Tribune of the Public Mandate", "Prime Civic Arbiter", "Keeper of the Common Seal"],
+    democracy: ["Speaker of the Open Ballot", "First Delegate of the Commons", "Custodian of Civic Choice"],
+    commonwealth: ["Steward of Shared Prosperity", "Warden of the Civic Compact", "First Servant of the Commonwealth"],
+  }
+
+  let extras: string[] = []
+  for (const [family, pool] of Object.entries(extrasByFamily)) {
+    if (type.includes(family)) {
+      extras = pool
+      break
+    }
+  }
+  if (extras.length === 0) {
+    extras = ["High Steward of Destiny", "Prime Curator of Statecraft", "First Architect of the National Project"]
+  }
+
+  const merged = [...base, ...extras]
+  let hash = 0
+  const seedText = `${governmentType}:${seed}`
+  for (let i = 0; i < seedText.length; i++) {
+    hash = (hash * 31 + seedText.charCodeAt(i)) >>> 0
+  }
+  const start = merged.length > 0 ? hash % merged.length : 0
+
+  const picked: string[] = []
+  for (let i = 0; i < merged.length && picked.length < 3; i++) {
+    const candidate = merged[(start + i) % merged.length]
+    if (!picked.includes(candidate)) picked.push(candidate)
+  }
+
+  return picked
+}
+
+export function getDefaultCurrencyForEra(era: GameEra): string {
+  if (era === "Stone Age") return "Shell Beads"
+  if (era === "Bronze Age") return "Bronze Rings"
+  if (era === "Iron Age") return "Iron Marks"
+  if (era === "Classical Era") return "Silver Drachms"
+  if (era === "Medieval Era") return "Crown Pennies"
+  if (era === "Renaissance") return "Guild Florins"
+  if (era === "Industrial Revolution") return "Industrial Notes"
+  if (era === "Atomic Age") return "State Bonds"
+  return "Credit"
+}
+
 export function createDefaultNation(name: string, governmentType: string, gameMode: "Eternal" | "Eras" = "Eternal", slot: number = 1): Nation {
+  const era: GameEra = gameMode === "Eras" ? "Stone Age" : "Information Age"
   return {
     id: crypto.randomUUID(),
     slot,
@@ -265,10 +362,10 @@ export function createDefaultNation(name: string, governmentType: string, gameMo
     motto: "Unity, Progress, Prosperity",
     flag: "🏳️",
     governmentType,
-    currency: "Credit",
+    currency: getDefaultCurrencyForEra(era),
     capital: `${name} City`,
     leader: "The People",
-    era: gameMode === "Eras" ? "Stone Age" : "Information Age",
+    era,
     gameMode,
     stats: {
       economy: 50,
@@ -310,6 +407,8 @@ export function createDefaultNation(name: string, governmentType: string, gameMo
     },
     activePolicies: [],
     crisisArcs: [],
+    crisisLoadStreak: 0,
+    recentIssueKeys: [],
     pendingConsequences: [],
   }
 }

@@ -37,7 +37,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import type { Nation, Issue, IssueOption, NationStats, InstitutionKey, FactionKey, MapCrisis } from "@/lib/game-types"
-import { getStatLabel } from "@/lib/game-types"
+import { getStatLabel, getGovernmentLeadershipLabel } from "@/lib/game-types"
 
 type GameView = "overview" | "history" | "rankings" | "system"
 
@@ -266,7 +266,9 @@ export function GameDashboard({
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-[10px] font-black text-white uppercase tracking-wider leading-none">{session.user?.name || session.user?.email}</p>
-                  <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest mt-0.5">Administrative Head</p>
+                  <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest mt-0.5">
+                    {getGovernmentLeadershipLabel(nation.governmentType)}
+                  </p>
                 </div>
               </div>
             ) : (
