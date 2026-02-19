@@ -353,6 +353,81 @@ export function getDefaultCurrencyForEra(era: GameEra): string {
   return "Credit"
 }
 
+function hashSeed(text: string): number {
+  let hash = 0
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash * 31 + text.charCodeAt(i)) >>> 0
+  }
+  return hash
+}
+
+function seededRandom(seed: number): () => number {
+  let state = seed || 1
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0
+    return state / 0xffffffff
+  }
+}
+
+function createStartingRegions(nationName: string, era: GameEra): Region[] {
+  const seed = hashSeed(`${nationName}:${era}:${Date.now()}`)
+  const rand = seededRandom(seed)
+  const count = 4 + Math.floor(rand() * 4) // 4-7
+
+  const terrainPool: RegionTerrain[] = ["plains", "coastal", "highlands", "frontier", "riverland", "industrial"]
+  const namePool = [
+    "Sunfall Basin",
+    "Northern Reach",
+    "Whisper Coast",
+    "Granite March",
+    "River Crown",
+    "Ashen Fields",
+    "Storm Gate",
+    "Cinder Vale",
+    "Glasswater",
+    "Silver Steppe",
+    "Iron Hollow",
+    "Dawn Heights",
+    "Blue Marsh",
+    "Obsidian Cape",
+    "Pilgrim Roads",
+  ]
+
+  const pickedNames: string[] = []
+  const baseWeights = Array.from({ length: count }, () => 8 + Math.floor(rand() * 10))
+  const weightTotal = baseWeights.reduce((a, b) => a + b, 0)
+  const regionShares = baseWeights.map((w) => Math.max(8, Math.round((w / weightTotal) * 100)))
+  const roundedTotal = regionShares.reduce((a, b) => a + b, 0)
+  regionShares[0] += 100 - roundedTotal
+
+  return Array.from({ length: count }, (_, i) => {
+    let regionName = namePool[Math.floor(rand() * namePool.length)]
+    while (pickedNames.includes(regionName)) {
+      regionName = namePool[Math.floor(rand() * namePool.length)]
+    }
+    pickedNames.push(regionName)
+    const terrain = terrainPool[Math.floor(rand() * terrainPool.length)]
+    const specializationByTerrain: Record<RegionTerrain, RegionSpecialization> = {
+      plains: "agrarian",
+      highlands: "fortress",
+      coastal: "trade",
+      riverland: "agrarian",
+      industrial: "industrial",
+      frontier: "fortress",
+    }
+
+    return {
+      id: `r-${i + 1}-${Math.floor(rand() * 9000 + 1000)}`,
+      name: regionName,
+      terrain,
+      specialization: specializationByTerrain[terrain],
+      development: 38 + Math.floor(rand() * 24),
+      stability: 40 + Math.floor(rand() * 22),
+      populationShare: regionShares[i],
+    }
+  })
+}
+
 export function createDefaultNation(name: string, governmentType: string, gameMode: "Eternal" | "Eras" = "Eternal", slot: number = 1): Nation {
   const era: GameEra = gameMode === "Eras" ? "Stone Age" : "Information Age"
   return {
@@ -384,12 +459,7 @@ export function createDefaultNation(name: string, governmentType: string, gameMo
     issuesResolved: 0,
     decisionHistory: [],
     historyLog: [],
-    regions: [
-      { id: "r-heartland", name: "Heartland Basin", terrain: "plains", development: 52, stability: 56, populationShare: 32 },
-      { id: "r-coast", name: "Coastal Reach", terrain: "coastal", development: 49, stability: 52, populationShare: 24 },
-      { id: "r-highlands", name: "Northern Highlands", terrain: "highlands", development: 42, stability: 50, populationShare: 18 },
-      { id: "r-frontier", name: "Frontier March", terrain: "frontier", development: 38, stability: 45, populationShare: 26 },
-    ],
+    regions: createStartingRegions(name, era),
     usedIssueTitles: [],
     institutions: {
       governance: 50,

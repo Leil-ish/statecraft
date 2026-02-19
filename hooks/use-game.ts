@@ -483,8 +483,15 @@ function mergeAndAdvanceCrisisArcs(nation: Nation): MapCrisis[] {
 
   const candidates = buildPressureCrisisCandidates(nation)
   const ids = new Set(advanced.map((arc) => `${arc.source}-${arc.type}-${arc.regionId}`))
+  const recentlyResolved = new Set(
+    (nation.recentIssueKeys || [])
+      .filter((key) => key.startsWith("crisis:"))
+      .map((key) => key.replace("crisis:", ""))
+  )
   const additions: MapCrisis[] = []
   for (const c of candidates) {
+    const repeatKey = `${c.type}:${c.regionId || "unknown"}`
+    if (recentlyResolved.has(repeatKey)) continue
     const key = `${c.source}-${c.type}-${c.regionId}`
     if (ids.has(key)) continue
     additions.push(c)
@@ -933,19 +940,54 @@ function applyEraFlavorToIssue(issue: Issue, era: GameEra): Issue {
   const preIndustrial = ["Stone Age", "Bronze Age", "Iron Age", "Classical Era", "Medieval Era", "Renaissance"].includes(era)
   if (!preIndustrial) return issue
 
+  const replaceCaseAware = (text: string, pattern: RegExp, replacement: string): string =>
+    text.replace(pattern, (match) => {
+      const isCapitalized = match[0] === match[0].toUpperCase()
+      return isCapitalized ? `${replacement[0].toUpperCase()}${replacement.slice(1)}` : replacement
+    })
+
   const rewrite = (text: string): string => {
-    return text
-      .replace(/regional/gi, "territorial")
-      .replace(/public/gi, "communal")
-      .replace(/national/gi, "realm-wide")
-      .replace(/cyber/gi, "signal")
-      .replace(/systems/gi, "structures")
-      .replace(/industry/gi, "craft")
-      .replace(/technology/gi, "craft knowledge")
-      .replace(/infrastructure/gi, "roads and granaries")
-      .replace(/consortium/gi, "guild")
-      .replace(/oversight/gi, "council review")
-      .replace(/metrics/gi, "records")
+    return replaceCaseAware(
+      replaceCaseAware(
+        replaceCaseAware(
+          replaceCaseAware(
+            replaceCaseAware(
+              replaceCaseAware(
+                replaceCaseAware(
+                  replaceCaseAware(
+                    replaceCaseAware(
+                      replaceCaseAware(
+                        replaceCaseAware(text, /\bregional\b/gi, "territorial"),
+                        /\bpublic\b/gi,
+                        "communal"
+                      ),
+                      /\bnational\b/gi,
+                      "realm-wide"
+                    ),
+                    /\bcyber\b/gi,
+                    "signal"
+                  ),
+                  /\bsystems\b/gi,
+                  "structures"
+                ),
+                /\bindustry\b/gi,
+                "craft"
+              ),
+              /\btechnology\b/gi,
+              "craft knowledge"
+            ),
+            /\binfrastructure\b/gi,
+            "roads and granaries"
+          ),
+          /\bconsortium\b/gi,
+          "guild"
+        ),
+        /\boversight\b/gi,
+        "council review"
+      ),
+      /\bmetrics\b/gi,
+      "records"
+    )
   }
 
   return {
@@ -1140,19 +1182,36 @@ function summarizeNationalPosture(stats: NationStats): string {
   return "mixed conditions with manageable systemic risk"
 }
 
-function buildLoginBriefing(nation: Nation): string {
-  const recent = (nation.decisionHistory || []).slice(-3)
-  const summaryLine =
-    recent.length > 0
-      ? recent.map((entry) => entry.replace(/\s+/g, " ").trim()).join(" | ")
-      : "No recent decrees were recorded."
+type SessionBriefing = {
+  title: string
+  posture: string
+  developments: string[]
+  leaderMood: string
+}
+
+function leaderMoodFromStats(leader: string, stats: NationStats): string {
+  const trust = stats.happiness - stats.crime + Math.round((stats.politicalFreedom - 50) * 0.4)
+  if (trust >= 25) return `Public confidence in ${leader} is unusually strong.`
+  if (trust >= 10) return `${leader} is viewed as steady, though expectations are rising.`
+  if (trust <= -15) return `${leader} is under visible pressure as criticism spreads.`
+  return `${leader} faces mixed sentiment and a watchful public.`
+}
+
+function buildSessionBriefing(nation: Nation): SessionBriefing {
+  const recent = (nation.decisionHistory || [])
+    .slice(-3)
+    .map((entry) => entry.replace(/\s+/g, " ").trim())
   const posture = summarizeNationalPosture(nation.stats)
-  return [
-    `Welcome back to ${nation.name}.`,
-    `Era: ${nation.era}. Issues resolved: ${nation.issuesResolved}.`,
-    `Strategic posture: ${posture}.`,
-    `Recent actions: ${summaryLine}`,
-  ].join(" ")
+  const developments =
+    recent.length > 0
+      ? recent
+      : ["No major decrees were recently recorded; institutions are in a holding pattern."]
+  return {
+    title: `State Chronicle: ${nation.name}`,
+    posture: `Era ${nation.era}. ${nation.issuesResolved} decisions recorded. Current posture: ${posture}.`,
+    developments,
+    leaderMood: leaderMoodFromStats(nation.leader, nation.stats),
+  }
 }
 
 function normalizeIssueOptions(
@@ -1761,9 +1820,10 @@ export function useGame() {
   const [recentChanges, setRecentChanges] = useState<Partial<NationStats>>({})
   const [usedIssueIds, setUsedIssueIds] = useState<Set<string>>(new Set())
   const [history, setHistory] = useState<string[]>([])
-  const [sessionBriefing, setSessionBriefing] = useState<string | null>(null)
+  const [sessionBriefing, setSessionBriefing] = useState<SessionBriefing | null>(null)
   const [consequenceTimer, setConsequenceTimer] = useState<number>(0)
   const briefingSeenRef = useRef<Set<string>>(new Set())
+  const forcedCrisisSeenRef = useRef<Set<string>>(new Set())
   const AI_WORKER_URL = process.env.NEXT_PUBLIC_AI_WORKER_URL || "https://statecraft-ai.paper-archon.workers.dev"
 
   // Consequence Engine: Check every 60 seconds
@@ -1800,8 +1860,20 @@ export function useGame() {
     const key = `${session.user.email || session.user.name || "user"}:${slotKey}:${nation.id}:${nation.issuesResolved}`
     if (briefingSeenRef.current.has(key)) return
     briefingSeenRef.current.add(key)
-    setSessionBriefing(buildLoginBriefing(nation))
+    setSessionBriefing(buildSessionBriefing(nation))
   }, [session?.user, nation, activeSlot])
+
+  useEffect(() => {
+    if (!session?.user || !nation || currentIssue) return
+    const highCrisis = buildMapCrises(nation).find((c) => c.severity === "high")
+    if (!highCrisis) return
+    const key = `${nation.id}:${highCrisis.type}:${highCrisis.regionId || "unknown"}:${nation.issuesResolved}`
+    if (forcedCrisisSeenRef.current.has(key)) return
+    forcedCrisisSeenRef.current.add(key)
+    const forcedIssue = ensureEraAdvancementOption(applyEraFlavorToIssue(createIssueFromCrisis(highCrisis, nation), nation.era), nation)
+    forcedIssue.title = `Priority Alert: ${forcedIssue.title}`
+    setCurrentIssue(forcedIssue)
+  }, [session?.user, nation, currentIssue])
 
   const processConsequences = useCallback(() => {
     if (!nation || !nation.pendingConsequences || nation.pendingConsequences.length === 0) return
@@ -1871,6 +1943,7 @@ export function useGame() {
         decisionHistory: n.decisionHistory || n.history || [],
         historyLog: n.historyLog || [],
         usedIssueTitles: n.usedIssueTitles || [],
+        recentIssueKeys: n.recentIssueKeys || [],
         pendingConsequences: n.pendingConsequences || [],
         institutions: normalizeInstitutions(n.institutions),
         factions: normalizeFactions(n.factions),

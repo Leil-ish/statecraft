@@ -49,7 +49,12 @@ interface GameDashboardProps {
   onGenerateIssue: () => void
   isLoading?: boolean
   recentChanges?: Partial<NationStats>
-  sessionBriefing?: string | null
+  sessionBriefing?: {
+    title: string
+    posture: string
+    developments: string[]
+    leaderMood: string
+  } | null
   decisionHistory?: string[]
   mapCrises?: MapCrisis[]
   onNewEmpire?: () => void
@@ -61,7 +66,6 @@ interface GameDashboardProps {
   onDismissBriefing?: () => void
 }
 
-const primaryStats: (keyof NationStats)[] = ["economy", "civilRights", "politicalFreedom", "environment"]
 const secondaryStats: (keyof NationStats)[] = ["happiness", "crime", "education", "healthcare", "technology"]
 
 const institutionMeta: Record<InstitutionKey, { label: string; icon: any; color: string }> = {
@@ -148,6 +152,28 @@ export function GameDashboard({
     (institutionEntries.reduce((acc, [, v]) => acc + v, 0) * 6) / Math.max(institutionEntries.length, 1) +
     nation.issuesResolved * 35
   )
+  const topCrisis = [...mapCrises].sort((a, b) => {
+    const rank = { high: 3, medium: 2, low: 1 } as const
+    return rank[b.severity] - rank[a.severity]
+  })[0]
+  const publicMood =
+    nation.stats.happiness - nation.stats.crime >= 20
+      ? "festive and confident"
+      : nation.stats.happiness - nation.stats.crime <= -10
+        ? "tense and rumor-driven"
+        : "restless but broadly cooperative"
+  const leaderPulse =
+    nation.stats.happiness + nation.stats.politicalFreedom >= 130
+      ? `${nation.leader} is treated as a steady national figure.`
+      : nation.stats.crime >= 65
+        ? `${nation.leader} is drawing criticism for perceived drift on security.`
+        : `${nation.leader} remains under close public scrutiny as new tradeoffs unfold.`
+  const oddTrend =
+    nation.stats.technology >= 70
+      ? "A wave of invention circles through taverns, guild halls, and message networks."
+      : nation.stats.environment <= 35
+        ? "Citizens report strange local adaptation rituals around water, food, and shelter."
+        : "Neighborhood councils are informally shaping policy norms before decrees arrive."
 
   return (
     <div className={cn("min-h-screen text-slate-50 selection:bg-blue-500/30 bg-gradient-to-b transition-all duration-1000", currentTheme)}>
@@ -309,8 +335,14 @@ export function GameDashboard({
                 <section className="rounded-3xl border border-blue-500/20 bg-blue-500/10 p-4 sm:p-5 backdrop-blur-xl">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-300/80">On Login Briefing</p>
-                      <p className="text-sm text-white/80 leading-relaxed">{sessionBriefing}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-300/80">{sessionBriefing.title}</p>
+                      <p className="text-sm text-white/80 leading-relaxed">{sessionBriefing.posture}</p>
+                      <ul className="mt-2 space-y-1">
+                        {sessionBriefing.developments.map((item, idx) => (
+                          <li key={idx} className="text-xs text-white/70 leading-relaxed">- {item}</li>
+                        ))}
+                      </ul>
+                      <p className="text-xs text-blue-200/80 mt-2">{sessionBriefing.leaderMood}</p>
                     </div>
                     {onDismissBriefing && (
                       <Button
@@ -322,6 +354,25 @@ export function GameDashboard({
                         <X className="h-4 w-4" />
                       </Button>
                     )}
+                  </div>
+                </section>
+              )}
+
+              {topCrisis && (
+                <section className="rounded-3xl border border-red-500/30 bg-red-500/10 p-4 sm:p-5 backdrop-blur-xl">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-300/90">Priority Signal</p>
+                      <p className="text-sm text-white/85">
+                        {topCrisis.label} in {topCrisis.regionName || "a province"} ({topCrisis.severity.toUpperCase()}).
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => onMapCrisis?.(topCrisis)}
+                      className="h-10 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold uppercase tracking-widest text-[10px] animate-pulse"
+                    >
+                      Address Priority Issue
+                    </Button>
                   </div>
                 </section>
               )}
@@ -391,6 +442,40 @@ export function GameDashboard({
                         />
                       ))}
                     </div>
+
+                    <section className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
+                        <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-white/40">Provincial Ledger</h2>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {regions.map((region) => (
+                          <div key={region.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-bold text-white">{region.name}</p>
+                              <span className="text-[10px] uppercase tracking-widest text-white/40">{region.terrain}</span>
+                            </div>
+                            <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                              <div>
+                                <p className="text-white/30">Stability</p>
+                                <p className="text-white font-semibold">{region.stability}</p>
+                              </div>
+                              <div>
+                                <p className="text-white/30">Development</p>
+                                <p className="text-white font-semibold">{region.development}</p>
+                              </div>
+                              <div>
+                                <p className="text-white/30">Pop Share</p>
+                                <p className="text-white font-semibold">{region.populationShare}%</p>
+                              </div>
+                            </div>
+                            <p className="text-[10px] uppercase tracking-widest text-emerald-300/70 mt-2">
+                              Specialization: {region.specialization}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
 
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                       <div className="rounded-3xl border border-white/10 bg-white/5 p-5 space-y-4">
@@ -463,7 +548,25 @@ export function GameDashboard({
                 </div>
 
                 {/* Decisions and Events - Moves up on mobile, stays right on desktop */}
-                <div className="lg:col-span-6 lg:col-start-4 order-2 lg:order-none space-y-8">
+                <div className="lg:col-span-6 lg:col-start-7 order-2 lg:order-none space-y-8">
+                  <section className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-4 bg-sky-500 rounded-full" />
+                      <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-white/40">National Pulse</h2>
+                    </div>
+                    <div className="rounded-3xl border border-white/10 bg-white/5 p-5 space-y-3">
+                      <p className="text-sm text-white/85 leading-relaxed">
+                        The populace feels {publicMood}. {leaderPulse}
+                      </p>
+                      <p className="text-xs text-white/70 leading-relaxed">
+                        Recent undercurrent: {oddTrend}
+                      </p>
+                      <p className="text-xs text-white/50 italic">
+                        Chronicle anchor: {(nation.historyLog || []).slice(-1)[0] || "No major chronicle events recorded yet."}
+                      </p>
+                    </div>
+                  </section>
+
                   <section className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -562,7 +665,7 @@ export function GameDashboard({
                 </div>
 
                 {/* Map Section - Below decisions on mobile, below stats on desktop */}
-                <div className="lg:col-span-7 lg:col-start-1 space-y-8 order-3 lg:order-none">
+                <div className="lg:col-span-6 lg:col-start-1 space-y-8 order-3 lg:order-none">
                   <section className="space-y-4">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-4 bg-purple-500 rounded-full" />
@@ -574,42 +677,7 @@ export function GameDashboard({
                       stats={nation.stats}
                       regions={regions}
                       crises={mapCrises}
-                      onCrisisClick={onMapCrisis}
                     />
-                  </section>
-
-                  <section className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
-                      <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-white/40">Provincial Ledger</h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {regions.map((region) => (
-                        <div key={region.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-bold text-white">{region.name}</p>
-                            <span className="text-[10px] uppercase tracking-widest text-white/40">{region.terrain}</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                            <div>
-                              <p className="text-white/30">Stability</p>
-                              <p className="text-white font-semibold">{region.stability}</p>
-                            </div>
-                            <div>
-                              <p className="text-white/30">Development</p>
-                              <p className="text-white font-semibold">{region.development}</p>
-                            </div>
-                            <div>
-                              <p className="text-white/30">Pop Share</p>
-                              <p className="text-white font-semibold">{region.populationShare}%</p>
-                            </div>
-                          </div>
-                          <p className="text-[10px] uppercase tracking-widest text-emerald-300/70 mt-2">
-                            Specialization: {region.specialization}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
                   </section>
                 </div>
               </div>
@@ -790,7 +858,14 @@ export function GameDashboard({
                     </Button>
                     <Button 
                       variant="outline" 
-                      onClick={onResetProgress}
+                      onClick={() => {
+                        if (!onResetProgress) return
+                        const confirmed = window.confirm(
+                          "Reset progress for this nation? This will permanently delete its saved history, policies, and stats."
+                        )
+                        if (!confirmed) return
+                        onResetProgress()
+                      }}
                       className="h-20 rounded-2xl border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10"
                     >
                       <RefreshCw className="h-5 w-5 text-purple-400" />

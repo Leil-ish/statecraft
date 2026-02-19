@@ -52,6 +52,10 @@ export function SlotSelector({ slots, onSelect, onDelete, isLoading }: SlotSelec
                     size="icon"
                     onClick={(e) => {
                       e.stopPropagation()
+                      const confirmed = window.confirm(
+                        `Delete saved game in Registry 0${slotNumber}? This cannot be undone.`
+                      )
+                      if (!confirmed) return
                       onDelete(slotNumber)
                     }}
                     className="h-10 w-10 rounded-full text-white/10 hover:text-red-400 hover:bg-red-400/10 transition-all duration-300"

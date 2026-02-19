@@ -184,7 +184,7 @@ export function GeopoliticalJurisdiction({ era, nationName, stats, regions = [],
     <div
       className={cn(
         "relative w-full aspect-[16/9] rounded-[32px] overflow-hidden shadow-2xl transition-all duration-1000 bg-slate-950/40 backdrop-blur-2xl border border-white/5",
-        crises.length > 0 ? "cursor-crosshair" : "cursor-default"
+        crises.length > 0 && onCrisisClick ? "cursor-crosshair" : "cursor-default"
       )}
     >
       <div className="absolute inset-0 pointer-events-none opacity-20">
@@ -277,10 +277,11 @@ export function GeopoliticalJurisdiction({ era, nationName, stats, regions = [],
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
-                className="cursor-pointer"
+                className={onCrisisClick ? "cursor-pointer" : "cursor-default"}
                 onPointerDown={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
+                  if (!onCrisisClick) return
                   if (crisis.regionId) setSelectedRegionId(crisis.regionId)
                   onCrisisClick?.(crisis)
                 }}
